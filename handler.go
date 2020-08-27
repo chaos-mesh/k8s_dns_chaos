@@ -137,7 +137,7 @@ func (k Kubernetes) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 }
 
 // Name implements the Handler interface.
-func (k Kubernetes) Name() string { return "kubernetes" }
+func (k Kubernetes) Name() string { return "k8s_dns_chaos" }
 
 // a takes a slice of net.IPs and returns a slice of A RRs.
 func a(zone string, ttl uint32, ips []net.IP) []dns.RR {
