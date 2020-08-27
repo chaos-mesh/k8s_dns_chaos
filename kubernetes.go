@@ -60,7 +60,7 @@ type Kubernetes struct {
 	sync.RWMutex
 	chaosMap map[string]*pb.SetDNSChaosRequest
 	// namespace -> pod_name -> chaos_mode
-	podChaosMap map[string][string]string
+	podChaosMap map[string]map[string]string
 }
 
 // New returns a initialized Kubernetes. It default interfaceAddrFunc to return 127.0.0.1. All other
@@ -72,7 +72,7 @@ func New(zones []string) *Kubernetes {
 	k.podMode = podModeDisabled
 	k.ttl = defaultTTL
 	k.chaosMap = make(map[string]*pb.SetDNSChaosRequest)
-	k.podChaosMap = make(map[string][string]string)
+	k.podChaosMap = make(map[string]map[string]string)
 
 	return k
 }

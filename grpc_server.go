@@ -74,24 +74,32 @@ func (k Kubernetes) CancelDNSChaos(ctx context.Context, req *pb.CancelDNSChaosRe
 	return nil, nil
 }
 
-func (k Kubernetes) getChaosMode(pod string) string {
+func (k Kubernetes) getChaosMode(pod *api.Pod) string {
 	k.RLock()
 	defer k.RUnlock()
 
-	return k.podChaosMap[pod]
+	if pod == nil {
+		return ""
+	}
+
+	if _, ok := k.podChaosMap[pod.Namespace]; ok {
+		return k.podChaosMap[pod.Namespace][pod.Name]
+	}
+
+	return ""
 }
 
-func (k Kubernetes) getChaosPod() ([]*api.Pod, error) {
+func (k Kubernetes) getChaosPod() ([]api.Pod, error) {
 	k.RLock()
 	defer k.RUnlock()
 
-	pods := make([]*api.Pod, 0, 10)
+	pods := make([]api.Pod, 0, 10)
 	for namespace := range k.podChaosMap {
 		podList, err := k.Client.Pods(namespace).List(context.Background(), meta.ListOptions{})
 		if err != nil {
 			return nil, err
 		}
-		for _, pod := range pods.Items {
+		for _, pod := range podList.Items {
 			pods = append(pods, pod)
 		}
 	}
