@@ -58,8 +58,9 @@ type Kubernetes struct {
 	Client           typev1.CoreV1Interface //client.Client
 
 	sync.RWMutex
-	chaosMap    map[string]*pb.SetDNSChaosRequest
-	podChaosMap map[string]string
+	chaosMap map[string]*pb.SetDNSChaosRequest
+	// namespace -> pod_name -> chaos_mode
+	podChaosMap map[string][string]string
 }
 
 // New returns a initialized Kubernetes. It default interfaceAddrFunc to return 127.0.0.1. All other
@@ -71,7 +72,7 @@ func New(zones []string) *Kubernetes {
 	k.podMode = podModeDisabled
 	k.ttl = defaultTTL
 	k.chaosMap = make(map[string]*pb.SetDNSChaosRequest)
-	k.podChaosMap = make(map[string]string)
+	k.podChaosMap = make(map[string][string]string)
 
 	return k
 }
@@ -534,8 +535,3 @@ func wildcard(s string) bool {
 }
 
 const coredns = "c" // used as a fake key prefix in msg.Service
-
-func (k *Kubernetes) getPods(namespace string) (*api.PodList, error) {
-	pods, err := k.Client.Pods(namespace).List(context.Background(), meta.ListOptions{})
-	return pods, err
-}

@@ -18,11 +18,11 @@ func (k Kubernetes) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 
 	sourcePodName := ""
 
-	pods, err := k.getPods("busybox")
+	pods, err := k.getChaosPod()
 	if err != nil {
 		log.Errorf("list pods, error %v", err)
 	}
-	for _, pod := range pods.Items {
+	for _, pod := range pods {
 		log.Infof("list pod name: %s, ip: %s", pod.Name, pod.Status.PodIP)
 		if pod.Status.PodIP == sourceIP {
 			sourcePodName = pod.Name

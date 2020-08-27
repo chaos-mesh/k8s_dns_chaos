@@ -6,6 +6,8 @@ import (
 
 	"github.com/coredns/coredns/plugin/kubernetes/pb"
 	"google.golang.org/grpc"
+	api "k8s.io/api/core/v1"
+	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // CreateGRPCServer ...
@@ -35,7 +37,10 @@ func (k Kubernetes) SetDNSChaos(ctx context.Context, req *pb.SetDNSChaosRequest)
 
 	k.chaosMap[req.Name] = req
 	for _, pod := range req.Pods {
-		k.podChaosMap[pod] = req.Mode
+		if _, ok := k.podChaosMap[pod.Namespace]; !ok {
+			k.podChaosMap[pod.Namespace] = make(map[string]string)
+		}
+		k.podChaosMap[pod.Namespace][pod.Name] = req.Mode
 	}
 
 	return &pb.DNSChaosResponse{
@@ -49,7 +54,19 @@ func (k Kubernetes) CancelDNSChaos(ctx context.Context, req *pb.CancelDNSChaosRe
 	k.Lock()
 	defer k.Unlock()
 	for _, pod := range k.chaosMap[req.Name].Pods {
-		delete(k.podChaosMap, pod)
+		if _, ok := k.podChaosMap[pod.Namespace]; ok {
+			delete(k.podChaosMap[pod.Namespace], pod.Name)
+		}
+	}
+
+	shouldDeleteNs := make([]string, 0, 1)
+	for namespace, pods := range k.podChaosMap {
+		if len(pods) == 0 {
+			shouldDeleteNs = append(shouldDeleteNs, namespace)
+		}
+	}
+	for _, namespace := range shouldDeleteNs {
+		delete(k.podChaosMap, namespace)
 	}
 
 	delete(k.chaosMap, req.Name)
@@ -62,4 +79,22 @@ func (k Kubernetes) getChaosMode(pod string) string {
 	defer k.RUnlock()
 
 	return k.podChaosMap[pod]
+}
+
+func (k Kubernetes) getChaosPod() ([]*api.Pod, error) {
+	k.RLock()
+	defer k.RUnlock()
+
+	pods := make([]*api.Pod, 0, 10)
+	for namespace := range k.podChaosMap {
+		podList, err := k.Client.Pods(namespace).List(context.Background(), meta.ListOptions{})
+		if err != nil {
+			return nil, err
+		}
+		for _, pod := range pods.Items {
+			pods = append(pods, pod)
+		}
+	}
+
+	return pods, nil
 }
