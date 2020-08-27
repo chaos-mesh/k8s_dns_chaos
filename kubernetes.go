@@ -237,30 +237,6 @@ func (k *Kubernetes) InitKubeCache(ctx context.Context) (err error) {
 		return err
 	}
 
-	/*
-		mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-			Scheme: scheme,
-			Port:   19443,
-		})
-		if err != nil {
-			return err
-		}
-
-		k.Client = mgr.GetClient()
-
-		var pod api.Pod
-		err = k.Client.Get(ctx, types.NamespacedName{
-			Namespace: "busybox",
-			Name:      "busybox-1",
-		}, &pod)
-		if err != nil {
-			log.Errorf("get pod failed, error %v", err)
-			//return err
-		} else {
-			log.Infof("get pod %v", pod)
-		}
-	*/
-
 	kubeClient, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return fmt.Errorf("failed to create kubernetes notification controller: %q", err)
@@ -560,12 +536,6 @@ func wildcard(s string) bool {
 const coredns = "c" // used as a fake key prefix in msg.Service
 
 func (k *Kubernetes) getPods(namespace string) (*api.PodList, error) {
-	// svc *corev1.Service
-	//set := labels.Set(svc.Spec.Selector)
-	//listOptions := metav1.ListOptions{LabelSelector: set.AsSelector().String()}
 	pods, err := k.Client.Pods(namespace).List(context.Background(), meta.ListOptions{})
-	//for _, pod := range pods.Items {
-	//fmt.Fprintf(os.Stdout, "pod name: %v\n", pod.Name)
-	//}
 	return pods, err
 }

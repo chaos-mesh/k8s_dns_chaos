@@ -32,20 +32,15 @@ func (k Kubernetes) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 	if len(mode) != 0 {
 		answers := []dns.RR{}
 		qname := state.Name()
+
+		// TODO: support more type
 		switch state.QType() {
-		case dns.TypePTR:
-			log.Info("dns.TypePTR")
-			//answers = h.ptr(qname, h.options.ttl, names)
 		case dns.TypeA:
-			//ips := h.LookupStaticHostV4(qname)
-			ip := net.IPv4(39, 156, 69, 79)
-			ips := []net.IP{ip}
+			ips := []net.IP{net.IPv4(39, 156, 69, 7)}
 			log.Infof("dns.TypeA %v", ips)
 			answers = a(qname, 10, ips)
 		case dns.TypeAAAA:
-			//ip := net.IP("39.156.69.79")
-			ip := net.IP{0x20, 0x1, 0xd, 0xb8, 0, 0, 0, 0, 0, 0, 0x1, 0x23, 0, 0x12, 0, 0x1}
-			ips := []net.IP{ip}
+			ips := []net.IP{net.IP{0x20, 0x1, 0xd, 0xb8, 0, 0, 0, 0, 0, 0, 0x1, 0x23, 0, 0x12, 0, 0x1}}
 			log.Infof("dns.TypeAAAA %v", ips)
 			answers = aaaa(qname, 10, ips)
 		}
@@ -76,34 +71,7 @@ func (k Kubernetes) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 	var (
 		records []dns.RR
 		extra   []dns.RR
-		//err     error
 	)
-
-	/*
-		pods := k.APIConn.PodIndex(sourceIP)
-		if len(pods) != 0 {
-			log.Infof("source IP: %s, pod: %v \n", sourceIP, pods[0])
-		}
-		log.Infof("source IP: %s, pod: nil \n", sourceIP)
-	*/
-	/*
-		pods, err := k.APIConn.PodList()
-		if err != nil {
-			log.Errorf("pod list error %v", err)
-		} else {
-			log.Info("list pod %v", pods)
-			//for _, pod := range pods {
-			//	log.Infof("list pod: %v", pod)
-			//}
-		}
-	*/
-
-	/*
-		services := k.APIConn.ServiceList()
-		for _, service := range services {
-			log.Infof("list service: %v", service)
-		}
-	*/
 
 	switch state.QType() {
 	case dns.TypeAXFR, dns.TypeIXFR:
@@ -193,17 +161,3 @@ func aaaa(zone string, ttl uint32, ips []net.IP) []dns.RR {
 	}
 	return answers
 }
-
-/*
-// ptr takes a slice of host names and filters out the ones that aren't in Origins, if specified, and returns a slice of PTR RRs.
-func (h *Chaos) ptr(zone string, ttl uint32, names []string) []dns.RR {
-	answers := make([]dns.RR, len(names))
-	for i, n := range names {
-		r := new(dns.PTR)
-		r.Hdr = dns.RR_Header{Name: zone, Rrtype: dns.TypePTR, Class: dns.ClassINET, Ttl: ttl}
-		r.Ptr = dns.Fqdn(n)
-		answers[i] = r
-	}
-	return answers
-}
-*/
