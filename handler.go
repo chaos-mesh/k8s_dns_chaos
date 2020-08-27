@@ -2,7 +2,6 @@ package kubernetes
 
 import (
 	"context"
-	"net"
 
 	"github.com/coredns/coredns/plugin"
 	"github.com/coredns/coredns/request"
@@ -31,34 +30,7 @@ func (k Kubernetes) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 	}
 	mode := k.getChaosMode(sourcePod)
 	if len(mode) != 0 {
-		answers := []dns.RR{}
-		qname := state.Name()
-
-		// TODO: support more type
-		switch state.QType() {
-		case dns.TypeA:
-			ips := []net.IP{net.IPv4(39, 156, 69, 7)}
-			log.Infof("dns.TypeA %v", ips)
-			answers = a(qname, 10, ips)
-		case dns.TypeAAAA:
-			ips := []net.IP{net.IP{0x20, 0x1, 0xd, 0xb8, 0, 0, 0, 0, 0, 0, 0x1, 0x23, 0, 0x12, 0, 0x1}}
-			log.Infof("dns.TypeAAAA %v", ips)
-			answers = aaaa(qname, 10, ips)
-		}
-
-		if len(answers) == 0 {
-			return dns.RcodeServerFailure, nil
-		}
-
-		log.Infof("answers %v", answers)
-
-		m := new(dns.Msg)
-		m.SetReply(r)
-		m.Authoritative = true
-		m.Answer = answers
-
-		w.WriteMsg(m)
-		return dns.RcodeSuccess, nil
+		return k.chaosDNS(ctx, w, r, state)
 	}
 
 	qname := state.QName()
@@ -138,27 +110,3 @@ func (k Kubernetes) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 
 // Name implements the Handler interface.
 func (k Kubernetes) Name() string { return "k8s_dns_chaos" }
-
-// a takes a slice of net.IPs and returns a slice of A RRs.
-func a(zone string, ttl uint32, ips []net.IP) []dns.RR {
-	answers := make([]dns.RR, len(ips))
-	for i, ip := range ips {
-		r := new(dns.A)
-		r.Hdr = dns.RR_Header{Name: zone, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: ttl}
-		r.A = ip
-		answers[i] = r
-	}
-	return answers
-}
-
-// aaaa takes a slice of net.IPs and returns a slice of AAAA RRs.
-func aaaa(zone string, ttl uint32, ips []net.IP) []dns.RR {
-	answers := make([]dns.RR, len(ips))
-	for i, ip := range ips {
-		r := new(dns.AAAA)
-		r.Hdr = dns.RR_Header{Name: zone, Rrtype: dns.TypeAAAA, Class: dns.ClassINET, Ttl: ttl}
-		r.AAAA = ip
-		answers[i] = r
-	}
-	return answers
-}

@@ -6,8 +6,6 @@ import (
 
 	"github.com/coredns/coredns/plugin/kubernetes/pb"
 	"google.golang.org/grpc"
-	api "k8s.io/api/core/v1"
-	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // CreateGRPCServer ...
@@ -72,37 +70,4 @@ func (k Kubernetes) CancelDNSChaos(ctx context.Context, req *pb.CancelDNSChaosRe
 	delete(k.chaosMap, req.Name)
 
 	return nil, nil
-}
-
-func (k Kubernetes) getChaosMode(pod *api.Pod) string {
-	k.RLock()
-	defer k.RUnlock()
-
-	if pod == nil {
-		return ""
-	}
-
-	if _, ok := k.podChaosMap[pod.Namespace]; ok {
-		return k.podChaosMap[pod.Namespace][pod.Name]
-	}
-
-	return ""
-}
-
-func (k Kubernetes) getChaosPod() ([]api.Pod, error) {
-	k.RLock()
-	defer k.RUnlock()
-
-	pods := make([]api.Pod, 0, 10)
-	for namespace := range k.podChaosMap {
-		podList, err := k.Client.Pods(namespace).List(context.Background(), meta.ListOptions{})
-		if err != nil {
-			return nil, err
-		}
-		for _, pod := range podList.Items {
-			pods = append(pods, pod)
-		}
-	}
-
-	return pods, nil
 }
