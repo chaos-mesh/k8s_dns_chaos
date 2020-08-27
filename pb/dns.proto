@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package pb;
+
+service DNS {
+  rpc SetDNSChaos(SetDNSChaosRequest) returns (DNSChaosResponse) {}
+  rpc CancelDNSChaos(CancelDNSChaosRequest) returns (DNSChaosResponse) {}
+}
+
+message SetDNSChaosRequest {
+  string name = 1;
+  repeated string pods = 2;
+  string mode = 3;
+  string selector = 4;
+}
+
+message CancelDNSChaosRequest {
+  string name = 1;
+}
+
+message DNSChaosResponse {
+  bool result = 1;
+  string msg = 2;
+}
