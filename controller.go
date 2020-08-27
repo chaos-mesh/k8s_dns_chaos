@@ -44,6 +44,8 @@ type dnsController interface {
 
 	// Modified returns the timestamp of the most recent changes
 	Modified() int64
+
+	//PodList() (pods runtime.Object, err error)
 }
 
 type dnsControl struct {
@@ -289,6 +291,18 @@ func (dns *dnsControl) HasSynced() bool {
 	d := dns.nsController.HasSynced()
 	return a && b && c && d
 }
+
+/*
+func (dns *dnsControl) PodList() (pods runtime.Object, err error) {
+	listFunc := podListFunc(context.Background(), dns.client, api.NamespaceAll, dns.selector)
+	pods, err = listFunc(meta.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return pods, nil
+}
+*/
 
 func (dns *dnsControl) ServiceList() (svcs []*object.Service) {
 	os := dns.svcLister.List()
