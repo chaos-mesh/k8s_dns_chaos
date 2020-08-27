@@ -14,6 +14,7 @@ import (
 // External implements the ExternalFunc call from the external plugin.
 // It returns any services matching in the services' ExternalIPs.
 func (k *Kubernetes) External(state request.Request) ([]msg.Service, int) {
+	log.Info("External, sourceIP: %s", state.IP())
 	base, _ := dnsutil.TrimZone(state.Name(), state.Zone)
 
 	segs := dns.SplitDomainName(base)
@@ -85,6 +86,7 @@ func (k *Kubernetes) External(state request.Request) ([]msg.Service, int) {
 
 // ExternalAddress returns the external service address(es) for the CoreDNS service.
 func (k *Kubernetes) ExternalAddress(state request.Request) []dns.RR {
+	log.Infof("ExternalAddress, sourceIP: %s", state.IP())
 	// If CoreDNS is running inside the Kubernetes cluster: k.nsAddrs() will return the external IPs of the services
 	// targeting the CoreDNS Pod.
 	// If CoreDNS is running outside of the Kubernetes cluster: k.nsAddrs() will return the first non-loopback IP

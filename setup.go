@@ -26,16 +26,25 @@ import (
 	"k8s.io/klog"
 )
 
-const pluginName = "kubernetes"
+const pluginName = "k8s_dns_chaos"
 
 var log = clog.NewWithPlugin(pluginName)
 
-func init() { plugin.Register(pluginName, setup) }
+func init() {
+	log.Info("init k8s plugin")
+	plugin.Register(pluginName, setup)
+}
 
 func setup(c *caddy.Controller) error {
 	klog.SetOutput(os.Stdout)
 
 	k, err := kubernetesParse(c)
+	if err != nil {
+		return plugin.Error(pluginName, err)
+	}
+
+	// TODO: support set port
+	err = k.CreateGRPCServer(":9288")
 	if err != nil {
 		return plugin.Error(pluginName, err)
 	}

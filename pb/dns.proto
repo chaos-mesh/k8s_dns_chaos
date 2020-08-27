@@ -9,9 +9,14 @@ service DNS {
 
 message SetDNSChaosRequest {
   string name = 1;
-  repeated string pods = 2;
+  repeated Pod pods = 2;
   string mode = 3;
   string selector = 4;
+}
+
+message Pod {
+  string namespace = 1;
+  string name = 2;
 }
 
 message CancelDNSChaosRequest {

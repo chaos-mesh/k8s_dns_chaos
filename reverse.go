@@ -12,6 +12,7 @@ import (
 
 // Reverse implements the ServiceBackend interface.
 func (k *Kubernetes) Reverse(ctx context.Context, state request.Request, exact bool, opt plugin.Options) ([]msg.Service, error) {
+	log.Infof("Reverse, sourceIP: %s", state.IP())
 
 	ip := dnsutil.ExtractAddressFromReverse(state.Name())
 	if ip == "" {

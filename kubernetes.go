@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"sync"
 
 	"github.com/coredns/coredns/plugin"
 	"github.com/coredns/coredns/plugin/etcd/msg"
 	"github.com/coredns/coredns/plugin/kubernetes/object"
+	"github.com/coredns/coredns/plugin/kubernetes/pb"
 	"github.com/coredns/coredns/plugin/pkg/dnsutil"
 	"github.com/coredns/coredns/plugin/pkg/fall"
 	"github.com/coredns/coredns/plugin/pkg/upstream"
@@ -20,10 +22,16 @@ import (
 	api "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
+	typev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+)
+
+var (
+	scheme = runtime.NewScheme()
 )
 
 // Kubernetes implements a plugin that connects to a Kubernetes cluster.
@@ -47,6 +55,12 @@ type Kubernetes struct {
 	localIPs         []net.IP
 	autoPathSearch   []string // Local search path from /etc/resolv.conf. Needed for autopath.
 	TransferTo       []string
+	Client           typev1.CoreV1Interface //client.Client
+
+	sync.RWMutex
+	chaosMap map[string]*pb.SetDNSChaosRequest
+	// namespace -> pod_name -> chaos_mode
+	podChaosMap map[string]map[string]string
 }
 
 // New returns a initialized Kubernetes. It default interfaceAddrFunc to return 127.0.0.1. All other
@@ -57,6 +71,8 @@ func New(zones []string) *Kubernetes {
 	k.Namespaces = make(map[string]struct{})
 	k.podMode = podModeDisabled
 	k.ttl = defaultTTL
+	k.chaosMap = make(map[string]*pb.SetDNSChaosRequest)
+	k.podChaosMap = make(map[string]map[string]string)
 
 	return k
 }
@@ -86,6 +102,8 @@ var (
 
 // Services implements the ServiceBackend interface.
 func (k *Kubernetes) Services(ctx context.Context, state request.Request, exact bool, opt plugin.Options) (svcs []msg.Service, err error) {
+	log.Infof("k8s services, source IP: %s \n", state.IP())
+
 	// We're looking again at types, which we've already done in ServeDNS, but there are some types k8s just can't answer.
 	switch state.QType() {
 
@@ -157,6 +175,7 @@ func (k *Kubernetes) primaryZone() string { return k.Zones[k.primaryZoneIndex] }
 
 // Lookup implements the ServiceBackend interface.
 func (k *Kubernetes) Lookup(ctx context.Context, state request.Request, name string, typ uint16) (*dns.Msg, error) {
+	log.Infof("k8s lookup, source IP: %s \n", state.IP())
 	return k.Upstream.Lookup(ctx, state, name, typ)
 }
 
@@ -213,6 +232,7 @@ func (k *Kubernetes) getClientConfig() (*rest.Config, error) {
 
 // InitKubeCache initializes a new Kubernetes cache.
 func (k *Kubernetes) InitKubeCache(ctx context.Context) (err error) {
+	log.Info("InitKubeCache")
 	config, err := k.getClientConfig()
 	if err != nil {
 		return err
@@ -222,6 +242,8 @@ func (k *Kubernetes) InitKubeCache(ctx context.Context) (err error) {
 	if err != nil {
 		return fmt.Errorf("failed to create kubernetes notification controller: %q", err)
 	}
+
+	k.Client = kubeClient.CoreV1()
 
 	if k.opts.labelSelector != nil {
 		var selector labels.Selector
@@ -252,6 +274,7 @@ func (k *Kubernetes) InitKubeCache(ctx context.Context) (err error) {
 
 // Records looks up services in kubernetes.
 func (k *Kubernetes) Records(ctx context.Context, state request.Request, exact bool) ([]msg.Service, error) {
+	log.Infof("k8s Records, sourceIP: %s", state.IP())
 	r, e := parseRequest(state.Name(), state.Zone)
 	if e != nil {
 		return nil, e
