@@ -5,9 +5,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"net"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/coredns/coredns/plugin"
 	"github.com/coredns/coredns/plugin/etcd/msg"
@@ -73,6 +75,7 @@ func New(zones []string) *Kubernetes {
 	k.ttl = defaultTTL
 	k.chaosMap = make(map[string]*pb.SetDNSChaosRequest)
 	k.podChaosMap = make(map[string]map[string]string)
+	rand.Seed(time.Now().UnixNano())
 
 	return k
 }
