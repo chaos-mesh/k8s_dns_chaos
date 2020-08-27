@@ -12,6 +12,7 @@ import (
 )
 
 var (
+	reg = prometheus.NewRegistry()
 	// DnsProgrammingLatency is defined as the time it took to program a DNS instance - from the time
 	// a service or pod has changed to the time the change was propagated and was available to be
 	// served by a DNS server.
@@ -23,7 +24,7 @@ var (
 	//   * cluster_ip
 	//   * headless_with_selector
 	//   * headless_without_selector
-	DnsProgrammingLatency = promauto.NewHistogramVec(prometheus.HistogramOpts{
+	DnsProgrammingLatency = promauto.With(reg).NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: plugin.Namespace,
 		Subsystem: pluginName,
 		Name:      "dns_programming_duration_seconds",
