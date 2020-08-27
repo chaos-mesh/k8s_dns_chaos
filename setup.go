@@ -43,6 +43,7 @@ func setup(c *caddy.Controller) error {
 		return plugin.Error(pluginName, err)
 	}
 
+	// TODO: support set port
 	err = k.CreateGRPCServer(":9288")
 	if err != nil {
 		return plugin.Error(pluginName, err)
