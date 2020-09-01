@@ -5,7 +5,6 @@ import (
 
 	"github.com/coredns/coredns/plugin"
 	"github.com/coredns/coredns/request"
-	api "k8s.io/api/core/v1"
 
 	"github.com/miekg/dns"
 )
@@ -16,21 +15,12 @@ func (k Kubernetes) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 	sourceIP := state.IP()
 	log.Infof("k8s ServeDNS, source IP: %s", sourceIP)
 
-	var sourcePod *api.Pod
-
-	pods, err := k.getChaosPod()
+	chaosPod, err := k.getChaosPod(sourceIP)
 	if err != nil {
-		log.Errorf("list pods, error %v", err)
+		log.Infof("fail to get pod information from cluster, IP: %s, error: %v", sourceIP, err)
 	}
-	for _, pod := range pods {
-		log.Infof("list pod name: %s, ip: %s", pod.Name, pod.Status.PodIP)
-		if pod.Status.PodIP == sourceIP {
-			sourcePod = &pod
-		}
-	}
-	mode := k.getChaosMode(sourcePod)
-	if len(mode) != 0 {
-		return k.chaosDNS(ctx, w, r, state)
+	if k.needChaos(chaosPod, state) {
+		return k.chaosDNS(ctx, w, r, state, chaosPod)
 	}
 
 	qname := state.QName()

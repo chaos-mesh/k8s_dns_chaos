@@ -57,12 +57,14 @@ type Kubernetes struct {
 	localIPs         []net.IP
 	autoPathSearch   []string // Local search path from /etc/resolv.conf. Needed for autopath.
 	TransferTo       []string
-	Client           typev1.CoreV1Interface //client.Client
+	Client           typev1.CoreV1Interface
 
 	sync.RWMutex
 	chaosMap map[string]*pb.SetDNSChaosRequest
-	// namespace -> pod_name -> chaos_mode
-	podChaosMap map[string]map[string]string
+	// namespace -> pod_name -> pod info
+	podMap map[string]map[string]*PodInfo
+
+	ipPodMap map[string]*PodInfo
 }
 
 // New returns a initialized Kubernetes. It default interfaceAddrFunc to return 127.0.0.1. All other
@@ -74,7 +76,8 @@ func New(zones []string) *Kubernetes {
 	k.podMode = podModeDisabled
 	k.ttl = defaultTTL
 	k.chaosMap = make(map[string]*pb.SetDNSChaosRequest)
-	k.podChaosMap = make(map[string]map[string]string)
+	k.podMap = make(map[string]map[string]*PodInfo)
+	k.ipPodMap = make(map[string]*PodInfo)
 	rand.Seed(time.Now().UnixNano())
 
 	return k

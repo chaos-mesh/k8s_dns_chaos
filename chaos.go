@@ -4,14 +4,57 @@ import (
 	"context"
 	"math/rand"
 	"net"
+	"time"
 
+	"github.com/coredns/coredns/plugin"
 	"github.com/coredns/coredns/request"
 	"github.com/miekg/dns"
 	api "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (k Kubernetes) chaosDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg, state request.Request) (int, error) {
+const (
+	// ScopeInner means chaos only works on the inner host in Kubernetes cluster
+	ScopeInner = "INNER"
+	// ScopeOuter means chaos only works on the outer host of Kubernetes cluster
+	ScopeOuter = "OUTER"
+	// ScopeAll means chaos works on all host
+	ScopeAll = "ALL"
+
+	// ModeError means return error for DNS request
+	ModeError = "ERROR"
+	// ModeRandom means return random IP for DNS request
+	ModeRandom = "RANDOM"
+)
+
+// PodInfo saves some information for pod
+type PodInfo struct {
+	Namespace      string
+	Name           string
+	Mode           string
+	Scope          string
+	IP             string
+	LastUpdateTime time.Time
+}
+
+// IsOverdue ...
+func (p *PodInfo) IsOverdue() bool {
+	// if the pod's IP is not updated greater than 10 seconds, will treate it as overdue
+	// and need to update it
+	if time.Since(p.LastUpdateTime) > time.Duration(time.Second*10) {
+		return true
+	}
+
+	return false
+}
+
+func (k Kubernetes) chaosDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg, state request.Request, podInfo *PodInfo) (int, error) {
+	if podInfo.Mode == ModeError {
+		return dns.RcodeServerFailure, nil
+	}
+
+	// return random IP
+
 	answers := []dns.RR{}
 	qname := state.Name()
 
@@ -22,6 +65,7 @@ func (k Kubernetes) chaosDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 		log.Infof("dns.TypeA %v", ips)
 		answers = a(qname, 10, ips)
 	case dns.TypeAAAA:
+		// TODO: return random IP
 		ips := []net.IP{net.IP{0x20, 0x1, 0xd, 0xb8, 0, 0, 0, 0, 0, 0, 0x1, 0x23, 0, 0x12, 0, 0x1}}
 		log.Infof("dns.TypeAAAA %v", ips)
 		answers = aaaa(qname, 10, ips)
@@ -77,35 +121,68 @@ func aaaa(zone string, ttl uint32, ips []net.IP) []dns.RR {
 	return answers
 }
 
-func (k Kubernetes) getChaosMode(pod *api.Pod) string {
+func (k Kubernetes) getChaosPod(ip string) (*PodInfo, error) {
 	k.RLock()
-	defer k.RUnlock()
 
-	if pod == nil {
-		return ""
+	podInfo := k.ipPodMap[ip]
+	if podInfo == nil {
+		k.RUnlock()
+		return nil, nil
 	}
 
-	if _, ok := k.podChaosMap[pod.Namespace]; ok {
-		return k.podChaosMap[pod.Namespace][pod.Name]
-	}
+	if podInfo.IsOverdue() {
+		k.RUnlock()
 
-	return ""
-}
-
-func (k Kubernetes) getChaosPod() ([]api.Pod, error) {
-	k.RLock()
-	defer k.RUnlock()
-
-	pods := make([]api.Pod, 0, 10)
-	for namespace := range k.podChaosMap {
-		podList, err := k.Client.Pods(namespace).List(context.Background(), meta.ListOptions{})
+		v1Pod, err := k.getPodFromCluster(podInfo.Namespace, podInfo.Name)
 		if err != nil {
 			return nil, err
 		}
-		for _, pod := range podList.Items {
-			pods = append(pods, pod)
+
+		if v1Pod.Status.PodIP != podInfo.IP {
+			k.Lock()
+			podInfo.IP = v1Pod.Status.PodIP
+			podInfo.LastUpdateTime = time.Now()
+
+			delete(k.ipPodMap, podInfo.IP)
+			k.ipPodMap[v1Pod.Status.PodIP] = podInfo
+			k.Unlock()
+		}
+
+		return podInfo, nil
+	}
+
+	k.RUnlock()
+	return podInfo, nil
+}
+
+// needChaos judges weather should do chaos for the request
+func (k Kubernetes) needChaos(podInfo *PodInfo, state request.Request) bool {
+	if podInfo == nil {
+		return false
+	}
+
+	if podInfo.Scope == ScopeAll {
+		return true
+	}
+
+	qname := state.QName()
+	zone := plugin.Zones(k.Zones).Matches(qname)
+
+	if zone == "" {
+		// is outer host
+		if podInfo.Scope == ScopeOuter {
+			return true
+		}
+	} else {
+		// is inner host
+		if podInfo.Scope == ScopeInner {
+			return true
 		}
 	}
 
-	return pods, nil
+	return false
+}
+
+func (k Kubernetes) getPodFromCluster(namespace, name string) (*api.Pod, error) {
+	return k.Client.Pods(namespace).Get(context.Background(), name, meta.GetOptions{})
 }
