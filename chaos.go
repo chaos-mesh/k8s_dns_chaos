@@ -121,7 +121,7 @@ func aaaa(zone string, ttl uint32, ips []net.IP) []dns.RR {
 	return answers
 }
 
-func (k Kubernetes) getChaosPod(ip string) (*PodInfo, error) {
+func (k Kubernetes) getChaosPod(ip string) *PodInfo {
 	k.RLock()
 
 	podInfo := k.ipPodMap[ip]
