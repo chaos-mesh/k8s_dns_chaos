@@ -77,19 +77,22 @@ func (k Kubernetes) CancelDNSChaos(ctx context.Context, req *pb.CancelDNSChaosRe
 	k.Lock()
 	defer k.Unlock()
 	for _, pod := range k.chaosMap[req.Name].Pods {
-		if _, ok := k.chaosMap[pod.Namespace]; ok {
-			delete(k.chaosMap[pod.Namespace], pod.Name)
+		if _, ok := k.podMap[pod.Namespace]; ok {
+			if podInfo, ok := k.PodMap[pod.Namespace][pod.Name]; ok {
+				delete(k.podMap[pod.Namespace], pod.Name)
+				delete(k.ipPodMap, podInfo.IP)
+			}
 		}
 	}
 
 	shouldDeleteNs := make([]string, 0, 1)
-	for namespace, pods := range k.podChaosMap {
+	for namespace, pods := range k.podMap {
 		if len(pods) == 0 {
 			shouldDeleteNs = append(shouldDeleteNs, namespace)
 		}
 	}
 	for _, namespace := range shouldDeleteNs {
-		delete(k.podChaosMap, namespace)
+		delete(k.podMap, namespace)
 	}
 
 	delete(k.chaosMap, req.Name)

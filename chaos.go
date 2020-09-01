@@ -10,6 +10,7 @@ import (
 	"github.com/coredns/coredns/request"
 	"github.com/miekg/dns"
 	api "k8s.io/api/core/v1"
+	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -183,5 +184,5 @@ func (k Kubernetes) needChaos(podInfo *PodInfo, state request.Request) bool {
 }
 
 func (k Kubernetes) getPodFromCluster(namespace, name string) (*api.Pod, error) {
-	return k.Client.Pods(namespace).Get(context.Background(), name)
+	return k.Client.Pods(namespace).Get(context.Background(), name, meta.GetOptions{})
 }
