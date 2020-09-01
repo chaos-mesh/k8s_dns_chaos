@@ -13,7 +13,7 @@ message SetDNSChaosRequest {
   
   // mode means the chaos mode, values can be "RANDOM" or "ERROR"
   //   "RANDOM": return random IP
-  //   "ERROR":  return bad host error
+  //   "ERROR":  return unknown host error
   string mode = 3;
 
   // scope means the chaos scope, values can be "INNER", "OUTER" or "ALL":

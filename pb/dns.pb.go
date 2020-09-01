@@ -29,7 +29,7 @@ type SetDNSChaosRequest struct {
 	Pods []*Pod `protobuf:"bytes,2,rep,name=pods,proto3" json:"pods,omitempty"`
 	// mode means the chaos mode, values can be "RANDOM" or "ERROR"
 	//   "RANDOM": return random IP
-	//   "ERROR":  return bad host error
+	//   "ERROR":  return unknown host error
 	Mode string `protobuf:"bytes,3,opt,name=mode,proto3" json:"mode,omitempty"`
 	// scope means the chaos scope, values can be "INNER", "OUTER" or "ALL":
 	//   "INNER": chaos only works on the inner host in Kubernetes cluster
