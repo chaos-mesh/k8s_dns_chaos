@@ -123,7 +123,7 @@ func aaaa(zone string, ttl uint32, ips []net.IP) []dns.RR {
 func (k Kubernetes) getChaosPod(ip string) (*PodInfo, error) {
 	k.RLock()
 
-	podInfo := k.ipMap[ip]
+	podInfo := k.ipPodMap[ip]
 	if podInfo == nil {
 		k.RUnlock()
 		return nil, nil
@@ -132,7 +132,7 @@ func (k Kubernetes) getChaosPod(ip string) (*PodInfo, error) {
 	if podInfo.IsOverdue() {
 		k.RUnlock()
 
-		v1Pod, err := k.getPodFromCluster(pod.Namespace, pod.Name)
+		v1Pod, err := k.getPodFromCluster(podInfo.Namespace, podInfo.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -142,8 +142,8 @@ func (k Kubernetes) getChaosPod(ip string) (*PodInfo, error) {
 			podInfo.IP = v1Pod.Status.PodIP
 			podInfo.LastUpdateTime = time.Now()
 
-			delete(k.ipMap, podInfo.IP)
-			k.ipMap[v1Pod.Status.PodIP] = podInfo
+			delete(k.ipPodMap, podInfo.IP)
+			k.ipPodMap[v1Pod.Status.PodIP] = podInfo
 			k.Unlock()
 		}
 
@@ -182,12 +182,12 @@ func (k Kubernetes) needChaos(podInfo *PodInfo, state request.Request) bool {
 	return false
 }
 
-func (k Kubernetes) getPodFromCluster(namespace, name string) (*api.Pod, nil) {
+func (k Kubernetes) getPodFromCluster(namespace, name string) (*api.Pod, error) {
 	pod := &api.Pod{}
 	err = k.Client.Get(context.Background(), client.ObjectKey{
 		Namespace: namespace,
 		Name:      name,
 	}, pod)
 
-	return pod, nil
+	return pod, err
 }

@@ -57,7 +57,7 @@ func (k Kubernetes) SetDNSChaos(ctx context.Context, req *pb.SetDNSChaosRequest)
 		if oldPod, ok := k.podMap[pod.Namespace][pod.Name]; ok {
 			// Pod's IP maybe changed, so delete the old pod info
 			delete(k.podMap[pod.Namespace], pod.Name)
-			delete(k.ipMap, oldPod.IP)
+			delete(k.ipPodMap, oldPod.IP)
 		}
 
 		podInfo := &PodInfo{
@@ -70,7 +70,7 @@ func (k Kubernetes) SetDNSChaos(ctx context.Context, req *pb.SetDNSChaosRequest)
 		}
 
 		k.podMap[pod.Namespace][pod.Name] = podInfo
-		k.ipMap[v1Pod.Status.PodIP] = podInfo
+		k.ipPodMap[v1Pod.Status.PodIP] = podInfo
 	}
 
 	return &pb.DNSChaosResponse{
