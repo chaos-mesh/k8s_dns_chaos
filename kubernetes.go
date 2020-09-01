@@ -61,8 +61,10 @@ type Kubernetes struct {
 
 	sync.RWMutex
 	chaosMap map[string]*pb.SetDNSChaosRequest
-	// namespace -> pod_name -> chaos_mode
-	podChaosMap map[string]map[string]string
+	// namespace -> pod_name -> pod info
+	podMap map[string]map[string]*PodInfo
+
+	ipPodMap map[string]*PodInfo
 }
 
 // New returns a initialized Kubernetes. It default interfaceAddrFunc to return 127.0.0.1. All other
