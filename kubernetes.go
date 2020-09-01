@@ -76,7 +76,8 @@ func New(zones []string) *Kubernetes {
 	k.podMode = podModeDisabled
 	k.ttl = defaultTTL
 	k.chaosMap = make(map[string]*pb.SetDNSChaosRequest)
-	k.podChaosMap = make(map[string]map[string]string)
+	k.podMap = make(map[string]map[string]*PodInfo)
+	k.ipPodMap = make(map[string]*PodInfo)
 	rand.Seed(time.Now().UnixNano())
 
 	return k

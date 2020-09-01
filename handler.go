@@ -17,7 +17,7 @@ func (k Kubernetes) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 
 	chaosPod, err := k.getChaosPod(sourceIP)
 	if err != nil {
-		log.Warnf("fail to get pod information from cluster, namespace: %s, name: %s, error: %v", podInfo.Namespace, podInfo.Name, err)
+		log.Infof("fail to get pod information from cluster, IP: %s, error: %v", sourceIP, err)
 	}
 	if k.needChaos(chaosPod, state) {
 		return k.chaosDNS(ctx, w, r, state, chaosPod)
