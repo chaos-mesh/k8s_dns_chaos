@@ -4,7 +4,7 @@ import (
 	"context"
 	"net"
 
-	"github.com/coredns/coredns/plugin/kubernetes/pb"
+	"github.com/chaos-mesh/k8s_dns_chaos/pb"
 	"google.golang.org/grpc"
 )
 
