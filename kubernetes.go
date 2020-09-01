@@ -57,7 +57,7 @@ type Kubernetes struct {
 	localIPs         []net.IP
 	autoPathSearch   []string // Local search path from /etc/resolv.conf. Needed for autopath.
 	TransferTo       []string
-	Client           typev1.CoreV1Interface //client.Client
+	Client           typev1.CoreV1Interface
 
 	sync.RWMutex
 	chaosMap map[string]*pb.SetDNSChaosRequest

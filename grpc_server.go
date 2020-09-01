@@ -7,7 +7,6 @@ import (
 
 	"github.com/chaos-mesh/k8s_dns_chaos/pb"
 	"google.golang.org/grpc"
-	api "k8s.io/api/core/v1"
 )
 
 // CreateGRPCServer ...
@@ -39,12 +38,6 @@ func (k Kubernetes) SetDNSChaos(ctx context.Context, req *pb.SetDNSChaosRequest)
 	k.chaosMap[req.Name] = req
 
 	for _, pod := range req.Pods {
-		v1Pod := &api.Pod{}
-		err = k.Client.Get(context.Background(), client.ObjectKey{
-			Namespace: pod.Namespace,
-			Name:      pod.Name,
-		}, v1Pod)
-
 		v1Pod, err := k.getPodFromCluster(pod.Namespace, pod.Name)
 		if err != nil {
 			return nil, err
@@ -84,8 +77,8 @@ func (k Kubernetes) CancelDNSChaos(ctx context.Context, req *pb.CancelDNSChaosRe
 	k.Lock()
 	defer k.Unlock()
 	for _, pod := range k.chaosMap[req.Name].Pods {
-		if _, ok := k.podChaosMap[pod.Namespace]; ok {
-			delete(k.podChaosMap[pod.Namespace], pod.Name)
+		if _, ok := k.chaosMap[pod.Namespace]; ok {
+			delete(k.chaosMap[pod.Namespace], pod.Name)
 		}
 	}
 
