@@ -18,8 +18,8 @@ const (
 	ScopeInner = "INNER"
 	// ScopeOuter means chaos only works on the outer host of Kubernetes cluster
 	ScopeOuter = "OUTER"
-	// ScopeALL means chaos works on all host
-	ScopeALL = "ALL"
+	// ScopeAll means chaos works on all host
+	ScopeAll = "ALL"
 
 	// ModeError means return error for DNS request
 	ModeError = "ERROR"
@@ -161,7 +161,7 @@ func (k Kubernetes) needChaos(podInfo *PodInfo, state request.Request) bool {
 		return false
 	}
 
-	if podInfo.Scope == ScopeALL {
+	if podInfo.Scope == ScopeAll {
 		return true
 	}
 
