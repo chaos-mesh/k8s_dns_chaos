@@ -2,6 +2,7 @@ package kubernetes
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"time"
 
@@ -10,9 +11,9 @@ import (
 )
 
 // CreateGRPCServer ...
-func (k Kubernetes) CreateGRPCServer(port string) error {
+func (k Kubernetes) CreateGRPCServer() error {
 	log.Info("CreateGRPCServer")
-	grpcListener, err := net.Listen("tcp", port)
+	grpcListener, err := net.Listen("tcp", fmt.Sprintf(":%d", k.grpcPort))
 	if err != nil {
 		return err
 	}
