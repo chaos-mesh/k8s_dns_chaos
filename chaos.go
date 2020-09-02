@@ -49,7 +49,7 @@ func (p *PodInfo) IsOverdue() bool {
 }
 
 func (k Kubernetes) chaosDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg, state request.Request, podInfo *PodInfo) (int, error) {
-	if podInfo.Mode == ModeError {
+	if podInfo.Action == ActionError {
 		return dns.RcodeServerFailure, nil
 	}
 
