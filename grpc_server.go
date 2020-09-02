@@ -12,11 +12,13 @@ import (
 
 // CreateGRPCServer ...
 func (k Kubernetes) CreateGRPCServer() error {
-	log.Info("CreateGRPCServer")
 	if k.grpcPort == 0 {
 		// use default port
 		k.grpcPort = 9288
+
 	}
+	log.Infof("CreateGRPCServer on port %d", k.grpcPort)
+
 	grpcListener, err := net.Listen("tcp", fmt.Sprintf(":%d", k.grpcPort))
 	if err != nil {
 		return err
