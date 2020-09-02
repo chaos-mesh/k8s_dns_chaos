@@ -184,5 +184,11 @@ func (k Kubernetes) needChaos(podInfo *PodInfo, state request.Request) bool {
 }
 
 func (k Kubernetes) getPodFromCluster(namespace, name string) (*api.Pod, error) {
-	return k.Client.Pods(namespace).Get(context.Background(), name, meta.GetOptions{})
+	log.Infof("getPodFromCluster namespace: %s, name: %s", namespace, name)
+	ns := k.Client.Pods(namespace)
+	if ns == nil {
+		log.Infof("getPodFromCluster, ns is nil")
+		return nil, nil
+	}
+	return ns.Get(context.Background(), name, meta.GetOptions{})
 }

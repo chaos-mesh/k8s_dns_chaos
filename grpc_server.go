@@ -30,6 +30,7 @@ func (k Kubernetes) CreateGRPCServer() error {
 		if err := s.Serve(grpcListener); err != nil {
 			log.Errorf("grpc serve error %v", err)
 		}
+		log.Info("grpc server end")
 	}()
 	log.Info("CreateGRPCServer end")
 	return nil
