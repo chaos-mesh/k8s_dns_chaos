@@ -287,9 +287,6 @@ func ParseStanza(c *caddy.Controller) (*Kubernetes, error) {
 					return nil, err
 				}
 				k8s.grpcPort = port
-			} else {
-				// use default port
-				k8s.grpcPort = 9288
 			}
 		default:
 			return nil, c.Errf("unknown property '%s'", c.Val())
