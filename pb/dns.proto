@@ -11,15 +11,15 @@ message SetDNSChaosRequest {
   string name = 1;
   repeated Pod pods = 2;
   
-  // mode means the chaos mode, values can be "RANDOM" or "ERROR"
-  //   "RANDOM": return random IP
-  //   "ERROR":  return unknown host error
-  string mode = 3;
+  // action means the chaos action, values can be "random" or "error"
+  //   "random": return random IP for DNS request
+  //   "error":  return error for DNS request
+  string action = 3;
 
-  // scope means the chaos scope, values can be "INNER", "OUTER" or "ALL":
-  //   "INNER": chaos only works on the inner host in Kubernetes cluster
-  //   "OUTER": chaos only works on the outer host of Kubernetes cluster
-  //   "ALL":   chaos works on all host
+  // scope means the chaos scope, values can be "inner", "outer" or "all":
+  //   "inner": chaos only works on the inner host in Kubernetes cluster
+  //   "outer": chaos only works on the outer host of Kubernetes cluster
+  //   "all":   chaos works on all host
   string scope = 4;
   string selector = 5;
 }

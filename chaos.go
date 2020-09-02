@@ -15,16 +15,16 @@ import (
 
 const (
 	// ScopeInner means chaos only works on the inner host in Kubernetes cluster
-	ScopeInner = "INNER"
+	ScopeInner = "inner"
 	// ScopeOuter means chaos only works on the outer host of Kubernetes cluster
-	ScopeOuter = "OUTER"
+	ScopeOuter = "outer"
 	// ScopeAll means chaos works on all host
-	ScopeAll = "ALL"
+	ScopeAll = "all"
 
 	// ModeError means return error for DNS request
-	ModeError = "ERROR"
+	ModeError = "error"
 	// ModeRandom means return random IP for DNS request
-	ModeRandom = "RANDOM"
+	ModeRandom = "random"
 )
 
 // PodInfo saves some information for pod
