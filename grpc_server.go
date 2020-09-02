@@ -57,7 +57,7 @@ func (k Kubernetes) SetDNSChaos(ctx context.Context, req *pb.SetDNSChaosRequest)
 		podInfo := &PodInfo{
 			Namespace:      pod.Namespace,
 			Name:           pod.Name,
-			Mode:           req.Mode,
+			Action:         req.Action,
 			Scope:          req.Scope,
 			IP:             v1Pod.Status.PodIP,
 			LastUpdateTime: time.Now(),

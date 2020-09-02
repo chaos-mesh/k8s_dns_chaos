@@ -21,17 +21,17 @@ const (
 	// ScopeAll means chaos works on all host
 	ScopeAll = "all"
 
-	// ModeError means return error for DNS request
-	ModeError = "error"
-	// ModeRandom means return random IP for DNS request
-	ModeRandom = "random"
+	// ActionError means return error for DNS request
+	ActionError = "error"
+	// ActionRandom means return random IP for DNS request
+	ActionRandom = "random"
 )
 
 // PodInfo saves some information for pod
 type PodInfo struct {
 	Namespace      string
 	Name           string
-	Mode           string
+	Action         string
 	Scope          string
 	IP             string
 	LastUpdateTime time.Time
