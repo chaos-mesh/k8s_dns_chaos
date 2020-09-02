@@ -43,8 +43,7 @@ func setup(c *caddy.Controller) error {
 		return plugin.Error(pluginName, err)
 	}
 
-	// TODO: support set port
-	err = k.CreateGRPCServer(":9288")
+	err = k.CreateGRPCServer()
 	if err != nil {
 		return plugin.Error(pluginName, err)
 	}
@@ -280,6 +279,18 @@ func ParseStanza(c *caddy.Controller) (*Kubernetes, error) {
 				continue
 			}
 			return nil, c.ArgErr()
+		case "grpcport":
+			args := c.RemainingArgs()
+			if len(args) == 1 {
+				port, err := strconv.Atoi(args[0])
+				if err != nil {
+					return nil, err
+				}
+				k8s.grpcPort = port
+			} else {
+				// use default port
+				k8s.grpcPort = 9288
+			}
 		default:
 			return nil, c.Errf("unknown property '%s'", c.Val())
 		}

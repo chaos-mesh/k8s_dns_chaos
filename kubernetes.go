@@ -59,6 +59,9 @@ type Kubernetes struct {
 	TransferTo       []string
 	Client           typev1.CoreV1Interface
 
+	// grpc port is the port used for request chaos request
+	grpcPort int
+
 	sync.RWMutex
 	chaosMap map[string]*pb.SetDNSChaosRequest
 	// namespace -> pod_name -> pod info
