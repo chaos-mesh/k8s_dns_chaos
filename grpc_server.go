@@ -48,6 +48,7 @@ func (k Kubernetes) SetDNSChaos(ctx context.Context, req *pb.SetDNSChaosRequest)
 	for _, pod := range req.Pods {
 		v1Pod, err := k.getPodFromCluster(pod.Namespace, pod.Name)
 		if err != nil {
+			log.Errorf("fail to getPodFromCluster %v", err)
 			return nil, err
 		}
 
