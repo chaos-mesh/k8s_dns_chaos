@@ -165,6 +165,7 @@ func (k Kubernetes) needChaos(podInfo *PodInfo, state request.Request) bool {
 		return true
 	}
 
+	// FIXME: this function is wrong, need to fix it
 	qname := state.QName()
 	zone := plugin.Zones(k.Zones).Matches(qname)
 
@@ -185,11 +186,10 @@ func (k Kubernetes) needChaos(podInfo *PodInfo, state request.Request) bool {
 }
 
 func (k Kubernetes) getPodFromCluster(namespace, name string) (*api.Pod, error) {
-	log.Infof("getPodFromCluster namespace: %s, name: %s", namespace, name)
-	ns := k.Client.Pods(namespace)
-	if ns == nil {
-		log.Infof("getPodFromCluster, ns is nil")
+	pods := k.Client.Pods(namespace)
+	if pods == nil {
+		log.Infof("getPodFromCluster, pods is nil")
 		return nil, nil
 	}
-	return ns.Get(context.Background(), name, meta.GetOptions{})
+	return pods.Get(context.Background(), name, meta.GetOptions{})
 }
