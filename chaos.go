@@ -168,6 +168,7 @@ func (k Kubernetes) needChaos(podInfo *PodInfo, state request.Request) bool {
 	qname := state.QName()
 	zone := plugin.Zones(k.Zones).Matches(qname)
 
+	log.Infof("qname: %s, zone: %s, scope: %s", qname, zone, podInfo.Scope)
 	if zone == "" {
 		// is outer host
 		if podInfo.Scope == ScopeOuter {
