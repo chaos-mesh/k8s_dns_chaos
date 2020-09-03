@@ -12,7 +12,13 @@ import (
 
 // CreateGRPCServer ...
 func (k Kubernetes) CreateGRPCServer() error {
-	log.Info("CreateGRPCServer")
+	if k.grpcPort == 0 {
+		// use default port
+		k.grpcPort = 9288
+
+	}
+	log.Infof("CreateGRPCServer on port %d", k.grpcPort)
+
 	grpcListener, err := net.Listen("tcp", fmt.Sprintf(":%d", k.grpcPort))
 	if err != nil {
 		return err
@@ -24,6 +30,7 @@ func (k Kubernetes) CreateGRPCServer() error {
 		if err := s.Serve(grpcListener); err != nil {
 			log.Errorf("grpc serve error %v", err)
 		}
+		log.Info("grpc server end")
 	}()
 	log.Info("CreateGRPCServer end")
 	return nil
@@ -41,6 +48,7 @@ func (k Kubernetes) SetDNSChaos(ctx context.Context, req *pb.SetDNSChaosRequest)
 	for _, pod := range req.Pods {
 		v1Pod, err := k.getPodFromCluster(pod.Namespace, pod.Name)
 		if err != nil {
+			log.Errorf("fail to getPodFromCluster %v", err)
 			return nil, err
 		}
 
@@ -57,7 +65,7 @@ func (k Kubernetes) SetDNSChaos(ctx context.Context, req *pb.SetDNSChaosRequest)
 		podInfo := &PodInfo{
 			Namespace:      pod.Namespace,
 			Name:           pod.Name,
-			Mode:           req.Mode,
+			Action:         req.Action,
 			Scope:          req.Scope,
 			IP:             v1Pod.Status.PodIP,
 			LastUpdateTime: time.Now(),
@@ -77,6 +85,11 @@ func (k Kubernetes) CancelDNSChaos(ctx context.Context, req *pb.CancelDNSChaosRe
 	log.Infof("receive CancelDNSChaos request %v", req)
 	k.Lock()
 	defer k.Unlock()
+
+	if _, ok := k.chaosMap[req.Name]; !ok {
+		return nil, nil
+	}
+
 	for _, pod := range k.chaosMap[req.Name].Pods {
 		if _, ok := k.podMap[pod.Namespace]; ok {
 			if podInfo, ok := k.podMap[pod.Namespace][pod.Name]; ok {

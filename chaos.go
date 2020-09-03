@@ -21,17 +21,17 @@ const (
 	// ScopeAll means chaos works on all host
 	ScopeAll = "all"
 
-	// ModeError means return error for DNS request
-	ModeError = "error"
-	// ModeRandom means return random IP for DNS request
-	ModeRandom = "random"
+	// ActionError means return error for DNS request
+	ActionError = "error"
+	// ActionRandom means return random IP for DNS request
+	ActionRandom = "random"
 )
 
 // PodInfo saves some information for pod
 type PodInfo struct {
 	Namespace      string
 	Name           string
-	Mode           string
+	Action         string
 	Scope          string
 	IP             string
 	LastUpdateTime time.Time
@@ -49,7 +49,7 @@ func (p *PodInfo) IsOverdue() bool {
 }
 
 func (k Kubernetes) chaosDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg, state request.Request, podInfo *PodInfo) (int, error) {
-	if podInfo.Mode == ModeError {
+	if podInfo.Action == ActionError {
 		return dns.RcodeServerFailure, nil
 	}
 
@@ -165,9 +165,11 @@ func (k Kubernetes) needChaos(podInfo *PodInfo, state request.Request) bool {
 		return true
 	}
 
+	// FIXME: this function is wrong, need to fix it
 	qname := state.QName()
 	zone := plugin.Zones(k.Zones).Matches(qname)
 
+	log.Infof("qname: %s, zone: %s, scope: %s, zones: %s", qname, zone, podInfo.Scope, k.Zones)
 	if zone == "" {
 		// is outer host
 		if podInfo.Scope == ScopeOuter {
@@ -184,5 +186,10 @@ func (k Kubernetes) needChaos(podInfo *PodInfo, state request.Request) bool {
 }
 
 func (k Kubernetes) getPodFromCluster(namespace, name string) (*api.Pod, error) {
-	return k.Client.Pods(namespace).Get(context.Background(), name, meta.GetOptions{})
+	pods := k.Client.Pods(namespace)
+	if pods == nil {
+		log.Infof("getPodFromCluster, pods is nil")
+		return nil, nil
+	}
+	return pods.Get(context.Background(), name, meta.GetOptions{})
 }

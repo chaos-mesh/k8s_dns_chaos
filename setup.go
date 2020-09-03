@@ -43,11 +43,6 @@ func setup(c *caddy.Controller) error {
 		return plugin.Error(pluginName, err)
 	}
 
-	err = k.CreateGRPCServer()
-	if err != nil {
-		return plugin.Error(pluginName, err)
-	}
-
 	err = k.InitKubeCache(context.Background())
 	if err != nil {
 		return plugin.Error(pluginName, err)
@@ -65,6 +60,11 @@ func setup(c *caddy.Controller) error {
 		k.localIPs = boundIPs(c)
 		return nil
 	})
+
+	err = k.CreateGRPCServer()
+	if err != nil {
+		return plugin.Error(pluginName, err)
+	}
 
 	return nil
 }
@@ -287,9 +287,6 @@ func ParseStanza(c *caddy.Controller) (*Kubernetes, error) {
 					return nil, err
 				}
 				k8s.grpcPort = port
-			} else {
-				// use default port
-				k8s.grpcPort = 9288
 			}
 		default:
 			return nil, c.Errf("unknown property '%s'", c.Val())
