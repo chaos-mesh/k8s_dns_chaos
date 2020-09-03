@@ -85,6 +85,11 @@ func (k Kubernetes) CancelDNSChaos(ctx context.Context, req *pb.CancelDNSChaosRe
 	log.Infof("receive CancelDNSChaos request %v", req)
 	k.Lock()
 	defer k.Unlock()
+
+	if _, ok := k.chaosMap[req.Name]; !ok {
+		return nil, nil
+	}
+
 	for _, pod := range k.chaosMap[req.Name].Pods {
 		if _, ok := k.podMap[pod.Namespace]; ok {
 			if podInfo, ok := k.podMap[pod.Namespace][pod.Name]; ok {
