@@ -59,9 +59,6 @@ func (k Kubernetes) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 func (k Kubernetes) getRecords(ctx context.Context, state request.Request) ([]dns.RR, []dns.RR, string, error) {
 	qname := state.QName()
 	zone := plugin.Zones(k.Zones).Matches(qname)
-	//if zone == "" {
-	//	return nil, nil, nil
-	//}
 
 	zone = qname[len(qname)-len(zone):] // maintain case of original query
 	state.Zone = zone
@@ -105,24 +102,6 @@ func (k Kubernetes) getRecords(ctx context.Context, state request.Request) ([]dn
 	}
 
 	return records, extra, zone, err
-
-	/*
-		if k.IsNameError(err) {
-
-			if !k.APIConn.HasSynced() {
-				// If we haven't synchronized with the kubernetes cluster, return server failure
-				return plugin.BackendError(ctx, &k, zone, dns.RcodeServerFailure, state, nil, plugin.Options{})
-			}
-			return plugin.BackendError(ctx, &k, zone, dns.RcodeNameError, state, nil, plugin.Options{})
-		}
-		if err != nil {
-			return dns.RcodeServerFailure, err
-		}
-
-		if len(records) == 0 {
-			return plugin.BackendError(ctx, &k, zone, dns.RcodeSuccess, state, nil, plugin.Options{})
-		}
-	*/
 }
 
 // Name implements the Handler interface.
