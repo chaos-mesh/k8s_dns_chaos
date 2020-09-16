@@ -7,7 +7,6 @@ import (
 	"net"
 	"time"
 
-	"github.com/coredns/coredns/plugin"
 	"github.com/coredns/coredns/request"
 	"github.com/miekg/dns"
 	api "k8s.io/api/core/v1"
@@ -157,7 +156,7 @@ func (k Kubernetes) getChaosPod(ip string) (*PodInfo, error) {
 }
 
 // needChaos judges weather should do chaos for the request
-func (k Kubernetes) needChaos(podInfo *PodInfo, state request.Request) bool {
+func (k Kubernetes) needChaos(podInfo *PodInfo, records []dns.RR, err error) bool {
 	if podInfo == nil {
 		return false
 	}
@@ -166,21 +165,30 @@ func (k Kubernetes) needChaos(podInfo *PodInfo, state request.Request) bool {
 		return true
 	}
 
-	// FIXME: this function is wrong, need to fix it
-	qname := state.QName()
-	zone := plugin.Zones(k.Zones).Matches(qname)
+	if err != nil {
+		// not found in cluster, is outer host
+		if k.IsNameError(err) {
+			if podInfo.Scope == ScopeOuter {
+				return true
+			}
+			return false
+		}
 
-	log.Infof("qname: %s, zone: %s, scope: %s, zones: %s", qname, zone, podInfo.Scope, k.Zones)
-	if zone == "" {
-		// is outer host
+		// can't judge the host is outer or inner host, ignore chaos
+		return false
+	}
+
+	if len(records) == 0 {
+		// not found in cluster, is outer host {
 		if podInfo.Scope == ScopeOuter {
 			return true
 		}
-	} else {
-		// is inner host
-		if podInfo.Scope == ScopeInner {
-			return true
-		}
+		return false
+	}
+
+	// is inner host
+	if podInfo.Scope == ScopeInner {
+		return true
 	}
 
 	return false

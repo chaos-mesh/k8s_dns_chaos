@@ -19,15 +19,50 @@ func (k Kubernetes) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 	if err != nil {
 		log.Infof("fail to get pod information from cluster, IP: %s, error: %v", sourceIP, err)
 	}
-	if k.needChaos(chaosPod, state) {
+
+	records, extra, err := k.getRecords(state)
+	log.Infof("records: %v, err: %v", records, err)
+
+	if k.needChaos(chaosPod, records, err) {
 		return k.chaosDNS(ctx, w, r, state, chaosPod)
 	}
 
+	if k.IsNameError(err) {
+		if k.Fall.Through(state.Name()) {
+			return plugin.NextOrFailure(k.Name(), k.Next, ctx, w, r)
+		}
+		if !k.APIConn.HasSynced() {
+			// If we haven't synchronized with the kubernetes cluster, return server failure
+			return plugin.BackendError(ctx, &k, zone, dns.RcodeServerFailure, state, nil /* err */, plugin.Options{})
+		}
+		return plugin.BackendError(ctx, &k, zone, dns.RcodeNameError, state, nil /* err */, plugin.Options{})
+	}
+	if err != nil {
+		return dns.RcodeServerFailure, err
+	}
+
+	if len(records) == 0 {
+		return plugin.BackendError(ctx, &k, zone, dns.RcodeSuccess, state, nil, plugin.Options{})
+	}
+
+	m := new(dns.Msg)
+	m.SetReply(r)
+	m.Authoritative = true
+	m.Answer = append(m.Answer, records...)
+	m.Extra = append(m.Extra, extra...)
+
+	w.WriteMsg(m)
+	return dns.RcodeSuccess, nil
+}
+
+// get records from cache
+func (k Kubernetes) getRecords(state request.Request) ([]dns.RR, []dns.RR, error) {
 	qname := state.QName()
 	zone := plugin.Zones(k.Zones).Matches(qname)
-	if zone == "" {
-		return plugin.NextOrFailure(k.Name(), k.Next, ctx, w, r)
-	}
+	//if zone == "" {
+	//	return nil, nil, nil
+	//}
+
 	zone = qname[len(qname)-len(zone):] // maintain case of original query
 	state.Zone = zone
 
@@ -68,34 +103,25 @@ func (k Kubernetes) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 		_, err = plugin.A(ctx, &k, zone, fake, nil, plugin.Options{})
 	}
 
-	if k.IsNameError(err) {
-		if k.Fall.Through(state.Name()) {
-			return plugin.NextOrFailure(k.Name(), k.Next, ctx, w, r)
+	return records, extra, err
+
+	/*
+		if k.IsNameError(err) {
+
+			if !k.APIConn.HasSynced() {
+				// If we haven't synchronized with the kubernetes cluster, return server failure
+				return plugin.BackendError(ctx, &k, zone, dns.RcodeServerFailure, state, nil, plugin.Options{})
+			}
+			return plugin.BackendError(ctx, &k, zone, dns.RcodeNameError, state, nil, plugin.Options{})
 		}
-		if !k.APIConn.HasSynced() {
-			// If we haven't synchronized with the kubernetes cluster, return server failure
-			return plugin.BackendError(ctx, &k, zone, dns.RcodeServerFailure, state, nil /* err */, plugin.Options{})
+		if err != nil {
+			return dns.RcodeServerFailure, err
 		}
-		return plugin.BackendError(ctx, &k, zone, dns.RcodeNameError, state, nil /* err */, plugin.Options{})
-	}
-	if err != nil {
-		return dns.RcodeServerFailure, err
-	}
 
-	if len(records) == 0 {
-		return plugin.BackendError(ctx, &k, zone, dns.RcodeSuccess, state, nil, plugin.Options{})
-	}
-
-	log.Infof("records %v", records)
-
-	m := new(dns.Msg)
-	m.SetReply(r)
-	m.Authoritative = true
-	m.Answer = append(m.Answer, records...)
-	m.Extra = append(m.Extra, extra...)
-
-	w.WriteMsg(m)
-	return dns.RcodeSuccess, nil
+		if len(records) == 0 {
+			return plugin.BackendError(ctx, &k, zone, dns.RcodeSuccess, state, nil, plugin.Options{})
+		}
+	*/
 }
 
 // Name implements the Handler interface.
