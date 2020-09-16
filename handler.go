@@ -20,7 +20,7 @@ func (k Kubernetes) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 		log.Infof("fail to get pod information from cluster, IP: %s, error: %v", sourceIP, err)
 	}
 
-	records, extra, err := k.getRecords(state)
+	records, extra, zone, err := k.getRecords(ctx, state)
 	log.Infof("records: %v, err: %v", records, err)
 
 	if k.needChaos(chaosPod, records, err) {
@@ -56,7 +56,7 @@ func (k Kubernetes) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 }
 
 // get records from cache
-func (k Kubernetes) getRecords(state request.Request) ([]dns.RR, []dns.RR, error) {
+func (k Kubernetes) getRecords(ctx context.Context, state request.Request) ([]dns.RR, []dns.RR, string, error) {
 	qname := state.QName()
 	zone := plugin.Zones(k.Zones).Matches(qname)
 	//if zone == "" {
@@ -69,6 +69,7 @@ func (k Kubernetes) getRecords(state request.Request) ([]dns.RR, []dns.RR, error
 	var (
 		records []dns.RR
 		extra   []dns.RR
+		err     error
 	)
 
 	switch state.QType() {
@@ -103,7 +104,7 @@ func (k Kubernetes) getRecords(state request.Request) ([]dns.RR, []dns.RR, error
 		_, err = plugin.A(ctx, &k, zone, fake, nil, plugin.Options{})
 	}
 
-	return records, extra, err
+	return records, extra, zone, err
 
 	/*
 		if k.IsNameError(err) {
