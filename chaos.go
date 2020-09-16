@@ -2,6 +2,7 @@ package kubernetes
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"net"
 	"time"
@@ -50,7 +51,7 @@ func (p *PodInfo) IsOverdue() bool {
 
 func (k Kubernetes) chaosDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg, state request.Request, podInfo *PodInfo) (int, error) {
 	if podInfo.Action == ActionError {
-		return dns.RcodeServerFailure, nil
+		return dns.RcodeServerFailure, fmt.Errorf("dns chaos error")
 	}
 
 	// return random IP
