@@ -288,6 +288,30 @@ func ParseStanza(c *caddy.Controller) (*Kubernetes, error) {
 				}
 				k8s.grpcPort = port
 			}
+		case "chaos":
+			/*
+				chaos {
+					chaos1 {
+						action error
+						scope  outer
+						pods busybox.busybox-0
+					}
+
+					chaos2 {
+						action random
+						scope  inner
+						pods busybox.busybox-1
+					}
+				}
+			*/
+			//args := c.RemainingArgs()
+			for c.Next() {
+				for c.NextBlock() {
+					args := c.RemainingArgs()
+					fmt.Printf("value: %v, args: %+v\n", c.Val(), args)
+				}
+			}
+
 		default:
 			return nil, c.Errf("unknown property '%s'", c.Val())
 		}
