@@ -306,10 +306,10 @@ func ParseStanza(c *caddy.Controller) (*Kubernetes, error) {
 			*/
 			//args := c.RemainingArgs()
 			//for c.Next() {
-			for c.NextBlock() {
-				args := c.RemainingArgs()
-				fmt.Printf("value: %v, args: %+v\n", c.Val(), args)
-			}
+			//for c.NextBlock() {
+			args := c.RemainingArgs()
+			fmt.Printf("value: %v, args: %+v\n", c.Val(), args)
+			//}
 			//}
 
 		default:
