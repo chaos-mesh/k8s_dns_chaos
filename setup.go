@@ -314,9 +314,10 @@ func ParseStanza(c *caddy.Controller) (*Kubernetes, error) {
 						Scope:     args[1],
 					}
 				}
+			} else {
+				fmt.Println("args len is not 1")
+				return nil, c.ArgErr()
 			}
-			fmt.Println("args len is not 1")
-			return nil, c.ArgErr()
 
 		default:
 			return nil, c.Errf("unknown property '%s'", c.Val())
