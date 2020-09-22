@@ -295,11 +295,12 @@ func ParseStanza(c *caddy.Controller) (*Kubernetes, error) {
 			*/
 			args := c.RemainingArgs()
 			fmt.Println("args", args)
-			if len(args) >= 3 {
-				for i := 2; i < len(args); i++ {
-					items := strings.SplitN(args[i], ".", 2)
+			if len(args) == 1 {
+				argsArr := strings.Split(args[0], " ")
+				for i := 2; i < len(argsArr); i++ {
+					items := strings.SplitN(argsArr[i], ".", 2)
 					if len(items) != 2 {
-						fmt.Println("items len is not 1")
+						fmt.Println("items len is not 2")
 						return nil, c.ArgErr()
 					}
 
@@ -309,12 +310,12 @@ func ParseStanza(c *caddy.Controller) (*Kubernetes, error) {
 					k8s.podMap[items[0]][items[1]] = &PodInfo{
 						Namespace: items[0],
 						Name:      items[1],
-						Action:    args[0],
-						Scope:     args[1],
+						Action:    argsArr[0],
+						Scope:     argsArr[1],
 					}
 				}
 			}
-			fmt.Println("args len is not greater than 3")
+			fmt.Println("args len is not 1")
 			return nil, c.ArgErr()
 
 		default:
