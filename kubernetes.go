@@ -297,7 +297,6 @@ func (k *Kubernetes) InitKubeCache(ctx context.Context) (err error) {
 
 // Records looks up services in kubernetes.
 func (k *Kubernetes) Records(ctx context.Context, state request.Request, exact bool) ([]msg.Service, error) {
-	log.Infof("k8s Records, sourceIP: %s", state.IP())
 	r, e := parseRequest(state.Name(), state.Zone)
 	if e != nil {
 		return nil, e
