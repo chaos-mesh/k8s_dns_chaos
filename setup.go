@@ -301,7 +301,7 @@ func ParseStanza(c *caddy.Controller) (*Kubernetes, error) {
 						return nil, c.ArgErr()
 					}
 
-					if ok := k8s.podMap[items[0]]; !ok {
+					if _, ok := k8s.podMap[items[0]]; !ok {
 						k8s.podMap[items[0]] = make(map[string]*PodInfo)
 					}
 					k8s.podMap[items[0]][items[1]] = &PodInfo{
