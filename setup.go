@@ -288,6 +288,34 @@ func ParseStanza(c *caddy.Controller) (*Kubernetes, error) {
 				}
 				k8s.grpcPort = port
 			}
+		case "chaos":
+			/*
+				the sample config:
+					chaos error outer busybox.busybox-0 busybox.busybox-1
+					chaos random inner busybox.busybox-2 busybox.busybox-3
+			*/
+			args := c.RemainingArgs()
+			if len(args) >= 3 {
+				for i := 2; i < len(args); i++ {
+					items := strings.SplitN(args[i], ".", 2)
+					if len(items) != 2 {
+						return nil, c.ArgErr()
+					}
+
+					if _, ok := k8s.podMap[items[0]]; !ok {
+						k8s.podMap[items[0]] = make(map[string]*PodInfo)
+					}
+					k8s.podMap[items[0]][items[1]] = &PodInfo{
+						Namespace: items[0],
+						Name:      items[1],
+						Action:    args[0],
+						Scope:     args[1],
+					}
+				}
+			} else {
+				return nil, c.ArgErr()
+			}
+
 		default:
 			return nil, c.Errf("unknown property '%s'", c.Val())
 		}

@@ -28,6 +28,10 @@ func (k Kubernetes) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 	}
 
 	if k.IsNameError(err) {
+		if len(zone) == 0 {
+			return plugin.NextOrFailure(k.Name(), k.Next, ctx, w, r)
+		}
+
 		if k.Fall.Through(state.Name()) {
 			return plugin.NextOrFailure(k.Name(), k.Next, ctx, w, r)
 		}

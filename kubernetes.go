@@ -278,12 +278,25 @@ func (k *Kubernetes) InitKubeCache(ctx context.Context) (err error) {
 	k.opts.endpointNameMode = k.endpointNameMode
 	k.APIConn = newdnsController(ctx, kubeClient, k.opts)
 
+	// get IP for chaos Pod
+	for _, pods := range k.podMap {
+		for name := range pods {
+			podInfo := pods[name]
+			pod, err := k.getPodFromCluster(podInfo.Namespace, podInfo.Name)
+			if err != nil {
+				return err
+			}
+			podInfo.IP = pod.Status.PodIP
+			podInfo.LastUpdateTime = time.Now()
+			k.ipPodMap[pod.Status.PodIP] = podInfo
+		}
+	}
+
 	return err
 }
 
 // Records looks up services in kubernetes.
 func (k *Kubernetes) Records(ctx context.Context, state request.Request, exact bool) ([]msg.Service, error) {
-	log.Infof("k8s Records, sourceIP: %s", state.IP())
 	r, e := parseRequest(state.Name(), state.Zone)
 	if e != nil {
 		return nil, e
