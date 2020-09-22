@@ -290,27 +290,29 @@ func ParseStanza(c *caddy.Controller) (*Kubernetes, error) {
 			}
 		case "chaos":
 			/*
-				chaos {
-					chaos1 {
-						action error
-						scope  outer
-						pods busybox.busybox-0
+				chaos error outer busybox.busybox-0 busybox.busybox-1
+				chaos random inner busybox.busybox-2 busybox.busybox-3
+			*/
+			args := c.RemainingArgs()
+			if len(args) >= 3 {
+				for i := 2; i < len(args); i++ {
+					items := strings.SplitN(args[i], ".", 2)
+					if len(items) != 2 {
+						return nil, c.ArgErr()
 					}
 
-					chaos2 {
-						action random
-						scope  inner
-						pods busybox.busybox-1
+					if ok := k.podMap[items[0]]; !ok {
+						k.podMap[items[0]] = make(map[string]*PodInfo)
+					}
+					k.podMap[items[0]][items[1]] = &PodInfo{
+						Namespace: items[0],
+						Name:      items[1],
+						Action:    args[0],
+						Scope:     args[1],
 					}
 				}
-			*/
-			//args := c.RemainingArgs()
-			//for c.Next() {
-			//for c.NextBlock() {
-			args := c.RemainingArgs()
-			fmt.Printf("value: %v, args: %+v\n", c.Val(), args)
-			//}
-			//}
+			}
+			return nil, c.ArgErr()
 
 		default:
 			return nil, c.Errf("unknown property '%s'", c.Val())
