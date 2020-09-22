@@ -301,10 +301,10 @@ func ParseStanza(c *caddy.Controller) (*Kubernetes, error) {
 						return nil, c.ArgErr()
 					}
 
-					if ok := k.podMap[items[0]]; !ok {
-						k.podMap[items[0]] = make(map[string]*PodInfo)
+					if ok := k8s.podMap[items[0]]; !ok {
+						k8s.podMap[items[0]] = make(map[string]*PodInfo)
 					}
-					k.podMap[items[0]][items[1]] = &PodInfo{
+					k8s.podMap[items[0]][items[1]] = &PodInfo{
 						Namespace: items[0],
 						Name:      items[1],
 						Action:    args[0],
