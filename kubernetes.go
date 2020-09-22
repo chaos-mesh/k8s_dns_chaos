@@ -279,7 +279,7 @@ func (k *Kubernetes) InitKubeCache(ctx context.Context) (err error) {
 	k.APIConn = newdnsController(ctx, kubeClient, k.opts)
 
 	// get IP for chaos Pod
-	for namespace, pods := range k.podMap {
+	for _, pods := range k.podMap {
 		for name := range pods {
 			podInfo := pods[name]
 			pod, err := k.getPodFromCluster(podInfo.Namespace, podInfo.Name)
