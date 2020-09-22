@@ -39,12 +39,10 @@ func (k Kubernetes) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 			// If we haven't synchronized with the kubernetes cluster, return server failure
 			return plugin.BackendError(ctx, &k, zone, dns.RcodeServerFailure, state, nil /* err */, plugin.Options{})
 		}
-
 		return plugin.BackendError(ctx, &k, zone, dns.RcodeNameError, state, nil /* err */, plugin.Options{})
 	}
 	if err != nil {
 		return dns.RcodeServerFailure, err
-
 	}
 
 	if len(records) == 0 {
