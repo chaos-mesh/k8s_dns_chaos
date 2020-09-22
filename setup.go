@@ -294,10 +294,12 @@ func ParseStanza(c *caddy.Controller) (*Kubernetes, error) {
 				chaos random inner busybox.busybox-2 busybox.busybox-3
 			*/
 			args := c.RemainingArgs()
+			fmt.Println("args", args)
 			if len(args) >= 3 {
 				for i := 2; i < len(args); i++ {
 					items := strings.SplitN(args[i], ".", 2)
 					if len(items) != 2 {
+						fmt.Println("items len is not 1")
 						return nil, c.ArgErr()
 					}
 
@@ -312,6 +314,7 @@ func ParseStanza(c *caddy.Controller) (*Kubernetes, error) {
 					}
 				}
 			}
+			fmt.Println("args len is not greater than 3")
 			return nil, c.ArgErr()
 
 		default:
