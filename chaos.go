@@ -62,12 +62,12 @@ func (k Kubernetes) chaosDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 	switch state.QType() {
 	case dns.TypeA:
 		ips := []net.IP{getRandomIPv4()}
-		log.Infof("dns.TypeA %v", ips)
+		log.Debugf("dns.TypeA %v", ips)
 		answers = a(qname, 10, ips)
 	case dns.TypeAAAA:
 		// TODO: return random IP
 		ips := []net.IP{net.IP{0x20, 0x1, 0xd, 0xb8, 0, 0, 0, 0, 0, 0, 0x1, 0x23, 0, 0x12, 0, 0x1}}
-		log.Infof("dns.TypeAAAA %v", ips)
+		log.Debugf("dns.TypeAAAA %v", ips)
 		answers = aaaa(qname, 10, ips)
 	}
 

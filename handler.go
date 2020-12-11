@@ -13,7 +13,7 @@ import (
 func (k Kubernetes) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (int, error) {
 	state := request.Request{W: w, Req: r}
 	sourceIP := state.IP()
-	log.Infof("k8s ServeDNS, source IP: %s, state: %v", sourceIP, state)
+	log.Debugf("k8s ServeDNS, source IP: %s, state: %v", sourceIP, state)
 
 	chaosPod, err := k.getChaosPod(sourceIP)
 	if err != nil {
@@ -21,7 +21,7 @@ func (k Kubernetes) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 	}
 
 	records, extra, zone, err := k.getRecords(ctx, state)
-	log.Infof("records: %v, err: %v", records, err)
+	log.Debugf("records: %v, err: %v", records, err)
 
 	if k.needChaos(chaosPod, records, err) {
 		return k.chaosDNS(ctx, w, r, state, chaosPod)
