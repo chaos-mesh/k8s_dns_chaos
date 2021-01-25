@@ -22,6 +22,7 @@ message SetDNSChaosRequest {
   //   "all":   chaos works on all host
   string scope = 4;
   string selector = 5;
+  repeated string patterns = 6;
 }
 
 message Pod {
