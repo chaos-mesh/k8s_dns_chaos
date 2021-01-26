@@ -23,7 +23,7 @@ func (k Kubernetes) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 	records, extra, zone, err := k.getRecords(ctx, state)
 	log.Debugf("records: %v, err: %v", records, err)
 
-	if k.needChaos(chaosPod, records, err) {
+	if k.needChaos(chaosPod, records, state.QName()) {
 		return k.chaosDNS(ctx, w, r, state, chaosPod)
 	}
 
