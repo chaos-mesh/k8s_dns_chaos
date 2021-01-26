@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/chaos-mesh/k8s_dns_chaos/pb"
+	trieselector "github.com/pingcap/tidb-tools/pkg/table-rule-selector"
 	"google.golang.org/grpc"
 )
 
@@ -45,6 +47,30 @@ func (k Kubernetes) SetDNSChaos(ctx context.Context, req *pb.SetDNSChaosRequest)
 
 	k.chaosMap[req.Name] = req
 
+	var scope string
+	if len(req.Patterns) == 0 {
+		scope = ScopeAll
+	}
+
+	// build selector
+	selector := trieselector.NewTrieSelector()
+	for _, pattern := range req.Patterns {
+		err := selector.Insert(pattern, "", true, trieselector.Insert)
+		if err != nil {
+			log.Errorf("fail to build selector %v", err)
+			return nil, err
+		}
+
+		if !strings.Contains(pattern, "*") {
+			// when send dns request to the dns server, will add a '.' at the end of the domain name.
+			err := selector.Insert(fmt.Sprintf("%s.", pattern), "", true, trieselector.Insert)
+			if err != nil {
+				log.Errorf("fail to build selector %v", err)
+				return nil, err
+			}
+		}
+	}
+
 	for _, pod := range req.Pods {
 		v1Pod, err := k.getPodFromCluster(pod.Namespace, pod.Name)
 		if err != nil {
@@ -66,7 +92,8 @@ func (k Kubernetes) SetDNSChaos(ctx context.Context, req *pb.SetDNSChaosRequest)
 			Namespace:      pod.Namespace,
 			Name:           pod.Name,
 			Action:         req.Action,
-			Scope:          req.Scope,
+			Scope:          scope,
+			Selector:       selector,
 			IP:             v1Pod.Status.PodIP,
 			LastUpdateTime: time.Now(),
 		}

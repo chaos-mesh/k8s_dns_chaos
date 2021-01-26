@@ -9,6 +9,7 @@ import (
 
 	"github.com/coredns/coredns/request"
 	"github.com/miekg/dns"
+	selector "github.com/pingcap/tidb-tools/pkg/table-rule-selector"
 	api "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -33,6 +34,7 @@ type PodInfo struct {
 	Name           string
 	Action         string
 	Scope          string
+	Selector       selector.Selector
 	IP             string
 	LastUpdateTime time.Time
 }
@@ -156,7 +158,7 @@ func (k Kubernetes) getChaosPod(ip string) (*PodInfo, error) {
 }
 
 // needChaos judges weather should do chaos for the request
-func (k Kubernetes) needChaos(podInfo *PodInfo, records []dns.RR, err error) bool {
+func (k Kubernetes) needChaos(podInfo *PodInfo, records []dns.RR, name string) bool {
 	if podInfo == nil {
 		return false
 	}
@@ -165,33 +167,17 @@ func (k Kubernetes) needChaos(podInfo *PodInfo, records []dns.RR, err error) boo
 		return true
 	}
 
-	if err != nil {
-		// not found in cluster, is outer host
-		if k.IsNameError(err) {
-			if podInfo.Scope == ScopeOuter {
-				return true
-			}
-			return false
-		}
-
-		// can't judge the host is outer or inner host, ignore chaos
+	rules := podInfo.Selector.Match(name, "")
+	if len(rules) == 0 {
 		return false
 	}
 
-	if len(records) == 0 {
-		// not found in cluster, is outer host {
-		if podInfo.Scope == ScopeOuter {
-			return true
-		}
+	match, ok := rules[0].(bool)
+	if !ok {
 		return false
 	}
 
-	// is inner host
-	if podInfo.Scope == ScopeInner {
-		return true
-	}
-
-	return false
+	return match
 }
 
 func (k Kubernetes) getPodFromCluster(namespace, name string) (*api.Pod, error) {
