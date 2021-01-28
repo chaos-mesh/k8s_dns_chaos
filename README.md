@@ -13,6 +13,10 @@ CoreDNS running with the k8s_dns_chaos plugin can be used to do chaos tests on D
 
 This plugin can only be used once per Server Block.
 
+> **Note:** 
+>
+> It works with CoreDNS 7d5f5b87a4fb310d442f7ef0d52e3fead0e10d39.
+
 ## Syntax
 
 ~~~
