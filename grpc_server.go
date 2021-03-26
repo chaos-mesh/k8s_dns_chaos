@@ -114,7 +114,9 @@ func (k Kubernetes) CancelDNSChaos(ctx context.Context, req *pb.CancelDNSChaosRe
 	defer k.Unlock()
 
 	if _, ok := k.chaosMap[req.Name]; !ok {
-		return nil, nil
+		return &pb.DNSChaosResponse{
+			Result: true,
+		}, nil
 	}
 
 	for _, pod := range k.chaosMap[req.Name].Pods {
@@ -138,5 +140,7 @@ func (k Kubernetes) CancelDNSChaos(ctx context.Context, req *pb.CancelDNSChaosRe
 
 	delete(k.chaosMap, req.Name)
 
-	return nil, nil
+	return &pb.DNSChaosResponse{
+		Result: true,
+	}, nil
 }
