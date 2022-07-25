@@ -1,0 +1,138 @@
+name: Upload Image
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "0 18 * * *"
+  release:
+    types: [published]
+
+jobs:
+  build-coredns:
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+    runs-on: ${{ fromJson('{"amd64":"ubuntu-latest", "arm64":["self-hosted", "Linux", "ARM64"]}')[matrix.arch] }}
+
+    container:
+      image: golang:1.13
+
+    steps:
+      - name: Clone CoreDNS
+        run: |
+          apt update -y && apt install git make -y
+
+          git clone https://github.com/coredns/coredns.git .
+          git checkout 7d5f5b87a4fb310d442f7ef0d52e3fead0e10d39
+          sed -i 's/stable/buster/g' Dockerfile
+
+      - uses: actions/checkout@v3
+        with:
+          path: 'plugin/k8s_dns_chaos'
+      
+      - name: Build Chaos CoreDNS
+        run: |
+          sed -i '/kubernetes/a\k8s_dns_chaos\:k8s_dns_chaos' plugin.cfg
+          go mod edit -require github.com/chaos-mesh/k8s_dns_chaos@649fd5298a454eb59b6080fd670e7f7ea1f5b1b4
+          SWAGGER=1 UI=1 make coredns
+
+      - name: upload coredns binary
+        uses: actions/upload-artifact@v2
+        with:
+          name: coredns-${{ matrix.arch }}
+          path: coredns
+          retention-days: 7
+
+  build-docker-image:
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+    runs-on: ${{ fromJson('{"amd64":"ubuntu-latest", "arm64":["self-hosted", "Linux", "ARM64"]}')[matrix.arch] }}
+    outputs:
+      image_tag: ${{ steps.image_tag.outputs.image_tag }}
+    needs: build-coredns
+    steps:
+      - name: Extract Image Tag
+        shell: bash
+        run: |
+          IMAGE_TAG=${GITHUB_REF##*/}
+          if [ "${IMAGE_TAG}" = "master" ] ; then
+            IMAGE_TAG=latest;
+          fi
+
+          echo "::set-output name=image_tag::$(echo $IMAGE_TAG)"
+        id: image_tag
+
+      - name: Log in to GitHub Docker Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Clone CoreDNS
+        run: |
+          apt update -y && apt install git make -y
+
+          git clone https://github.com/coredns/coredns.git .
+          git checkout 7d5f5b87a4fb310d442f7ef0d52e3fead0e10d39
+          sed -i 's/stable/buster/g' Dockerfile
+
+      - name: Download coredns binary
+        uses: actions/download-artifact@v2
+        with:
+          name: coredns-${{ matrix.arch }}
+          path: coredns
+
+      - name: Build Chaos CoreDNS Image
+        env:
+          IMAGE_TAG: ${{ steps.image_tag.outputs.image_tag }}
+          ARCH: ${{ matrix.arch }}
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+        run: |
+          docker build -t ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/chaos-coredns:$IMAGE_TAG-$ARCH .
+
+      - name: Upload Chaos CoreDNS
+        env:
+          IMAGE_TAG: ${{ steps.image_tag.outputs.image_tag }}
+          ARCH: ${{ matrix.arch }}
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+        run: |
+          # ${VAR,,} convert VAR to lower case
+          docker push ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/chaos-coredns:$IMAGE_TAG-$ARCH
+
+  upload-manifest:
+    runs-on: ubuntu-latest
+    needs: build-docker-image
+    steps:
+      - name: Build Chaos Mesh manifest
+        env:
+          IMAGE_TAG: ${{ needs.build-docker-image.outputs.image_tag }}
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+        run: |
+          # ${VAR,,} convert VAR to lower case
+          docker manifest create ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/chaos-coredns:$IMAGE_TAG \
+            ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/chaos-coredns:$IMAGE_TAG-amd64 \
+            ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/chaos-coredns:$IMAGE_TAG-arm64
+
+          docker manifest annotate ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/chaos-coredns:$IMAGE_TAG \
+            ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/chaos-coredns:$IMAGE_TAG-amd64 \
+            --os linux --arch amd64
+          docker manifest annotate ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/chaos-coredns:$IMAGE_TAG \
+            ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/chaos-coredns:$IMAGE_TAG-arm64 \
+            --os linux --arch arm64
+
+      - name: Log in to GitHub Docker Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Chaos Mesh
+        env:
+          IMAGE: ${{ matrix.image }}
+          IMAGE_TAG: ${{ needs.build-docker-image.outputs.image_tag }}
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+        run: |
+          # ${VAR,,} convert VAR to lower case
+          docker manifest push ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/chaos-coredns:$IMAGE_TAG
