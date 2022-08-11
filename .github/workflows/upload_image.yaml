@@ -33,6 +33,7 @@ jobs:
         run: |
           echo "k8s_dns_chaos:github.com/chaos-mesh/k8s_dns_chaos" >> plugin.cfg
           SWAGGER=1 UI=1 make coredns
+          chmod +x coredns
 
       - name: upload coredns binary
         uses: actions/upload-artifact@v2
