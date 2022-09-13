@@ -31,9 +31,10 @@ jobs:
       
       - name: Build Chaos CoreDNS
         run: |
-          sed -i '/kubernetes/a\k8s_dns_chaos\:k8s_dns_chaos' plugin.cfg
+          echo "k8s_dns_chaos:github.com/chaos-mesh/k8s_dns_chaos" >> plugin.cfg
           go mod edit -require github.com/chaos-mesh/k8s_dns_chaos@649fd5298a454eb59b6080fd670e7f7ea1f5b1b4
           SWAGGER=1 UI=1 make coredns
+          chmod +x coredns
 
       - name: upload coredns binary
         uses: actions/upload-artifact@v2
