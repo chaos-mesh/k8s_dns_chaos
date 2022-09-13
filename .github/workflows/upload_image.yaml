@@ -32,9 +32,9 @@ jobs:
       - name: Build Chaos CoreDNS
         run: |
           echo "k8s_dns_chaos:github.com/chaos-mesh/k8s_dns_chaos" >> plugin.cfg
+          # TODO: replace with the local repo, not stuck with a certain commit
           go mod edit -require github.com/chaos-mesh/k8s_dns_chaos@649fd5298a454eb59b6080fd670e7f7ea1f5b1b4
           SWAGGER=1 UI=1 make coredns
-          chmod +x coredns
 
       - name: upload coredns binary
         uses: actions/upload-artifact@v2
@@ -90,6 +90,8 @@ jobs:
           ARCH: ${{ matrix.arch }}
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
         run: |
+          # permissions would be lost after transfer by github artifacts, see: https://github.com/chaos-mesh/k8s_dns_chaos/issues/20
+          chmod +x coredns
           docker build -t ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/chaos-coredns:$IMAGE_TAG-$ARCH .
 
       - name: Upload Chaos CoreDNS
