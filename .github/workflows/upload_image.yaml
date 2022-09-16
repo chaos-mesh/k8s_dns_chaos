@@ -82,7 +82,7 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: coredns-${{ matrix.arch }}
-          path: coredns
+          path: coredns-artifacts
 
       - name: Build Chaos CoreDNS Image
         env:
@@ -91,7 +91,8 @@ jobs:
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
         run: |
           # permissions would be lost after transfer by github artifacts, see: https://github.com/chaos-mesh/k8s_dns_chaos/issues/20
-          chmod +x coredns/coredns
+          chmod +x coredns-artifacts/coredns
+          mv coredns-artifacts/coredns coredns
           docker build -t ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/chaos-coredns:$IMAGE_TAG-$ARCH .
 
       - name: Upload Chaos CoreDNS
