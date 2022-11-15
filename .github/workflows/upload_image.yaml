@@ -14,7 +14,6 @@ jobs:
     runs-on: ${{ fromJson('{"amd64":"ubuntu-latest", "arm64":["self-hosted", "Linux", "ARM64"]}')[matrix.arch] }}
     outputs:
       image_tag: ${{ steps.image_tag.outputs.image_tag }}
-    needs: build-coredns
     steps:
       - name: Extract Image Tag
         shell: bash
