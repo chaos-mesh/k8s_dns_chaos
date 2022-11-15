@@ -7,42 +7,6 @@ on:
     types: [published]
 
 jobs:
-  build-coredns:
-    strategy:
-      matrix:
-        arch: [amd64, arm64]
-    runs-on: ${{ fromJson('{"amd64":"ubuntu-latest", "arm64":["self-hosted", "Linux", "ARM64"]}')[matrix.arch] }}
-
-    container:
-      image: golang:1.13
-
-    steps:
-      - name: Clone CoreDNS
-        run: |
-          apt update -y && apt install git make -y
-
-          git clone https://github.com/coredns/coredns.git .
-          git checkout 7d5f5b87a4fb310d442f7ef0d52e3fead0e10d39
-          sed -i 's/stable/buster/g' Dockerfile
-
-      - uses: actions/checkout@v3
-        with:
-          path: 'plugin/k8s_dns_chaos'
-      
-      - name: Build Chaos CoreDNS
-        run: |
-          echo "k8s_dns_chaos:github.com/chaos-mesh/k8s_dns_chaos" >> plugin.cfg
-          # TODO: replace with the local repo, not stuck with a certain commit
-          go mod edit -require github.com/chaos-mesh/k8s_dns_chaos@649fd5298a454eb59b6080fd670e7f7ea1f5b1b4
-          SWAGGER=1 UI=1 make coredns
-
-      - name: upload coredns binary
-        uses: actions/upload-artifact@v2
-        with:
-          name: coredns-${{ matrix.arch }}
-          path: coredns
-          retention-days: 7
-
   build-docker-image:
     strategy:
       matrix:
@@ -70,29 +34,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Clone CoreDNS
-        run: |
-          apt update -y && apt install git make -y
-
-          git clone https://github.com/coredns/coredns.git .
-          git checkout 7d5f5b87a4fb310d442f7ef0d52e3fead0e10d39
-          sed -i 's/stable/buster/g' Dockerfile
-
-      - name: Download coredns binary
-        uses: actions/download-artifact@v2
-        with:
-          name: coredns-${{ matrix.arch }}
-          path: coredns-artifacts
-
       - name: Build Chaos CoreDNS Image
         env:
           IMAGE_TAG: ${{ steps.image_tag.outputs.image_tag }}
           ARCH: ${{ matrix.arch }}
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
         run: |
-          # permissions would be lost after transfer by github artifacts, see: https://github.com/chaos-mesh/k8s_dns_chaos/issues/20
-          chmod +x coredns-artifacts/coredns
-          mv coredns-artifacts/coredns coredns
           docker build -t ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/chaos-coredns:$IMAGE_TAG-$ARCH .
 
       - name: Upload Chaos CoreDNS
