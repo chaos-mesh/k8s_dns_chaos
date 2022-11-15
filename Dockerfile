@@ -3,11 +3,20 @@
 FROM golang:1.19 AS build-env
 ENV GO111MODULE on
 WORKDIR /
-RUN git clone --depth 1 --branch v1.7.0 https://github.com/coredns/coredns
+RUN git clone --depth 1 --branch v1.7.1 https://github.com/coredns/coredns
 COPY . /k8s_dns_chaos
-RUN ln -s /k8s_dns_chaos /coredns/plugin/k8s_dns_chaos
-RUN echo "k8s_dns_chaos:k8s_dns_chaos" >> plugin.cfg
-RUN cd coredns && make
+# RUN ln -s /k8s_dns_chaos /coredns/plugin/k8s_dns_chaos
+RUN echo "k8s_dns_chaos:github.com/chaos-mesh/k8s_dns_chaos" >> /coredns/plugin.cfg
+RUN --mount=type=cache,target=/go \
+    cd coredns && \
+    go mod edit -require github.com/chaos-mesh/k8s_dns_chaos@v0.0.0-00000000000000-000000000000 && \
+    go mod edit -replace github.com/chaos-mesh/k8s_dns_chaos=/k8s_dns_chaos && \ 
+    go mod edit -replace google.golang.org/grpc=google.golang.org/grpc@v1.29.1 && \
+    go get github.com/chaos-mesh/k8s_dns_chaos && \
+    go generate && \
+    go mod tidy
+RUN --mount=type=cache,target=/go \
+    cd coredns && make
 
 FROM debian:stable-slim AS certs
 RUN apt-get update && apt-get -uy upgrade
@@ -18,4 +27,5 @@ LABEL org.opencontainers.image.source=https://github.com/chaos-mesh/k8s_dns_chao
 COPY --from=certs /etc/ssl/certs /etc/ssl/certs
 COPY --from=build-env /coredns/coredns /coredns
 EXPOSE 53 53/udp
+ENV GOLANG_PROTOBUF_REGISTRATION_CONFLICT=warn
 ENTRYPOINT ["/coredns"]
