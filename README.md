@@ -2,7 +2,7 @@
 
 ## Name
 
-*k8s_dns_chaos* - enables inject DNS chaos in a Kubernetes cluster for Chaos Engineering. 
+_k8s_dns_chaos_ - enables inject DNS chaos in a Kubernetes cluster for Chaos Engineering.
 
 ## Description
 
@@ -13,17 +13,17 @@ CoreDNS running with the k8s_dns_chaos plugin can be used to do chaos tests on D
 
 This plugin can only be used once per Server Block.
 
-> **Note:** 
+> **Note:**
 >
 > It works with CoreDNS 7d5f5b87a4fb310d442f7ef0d52e3fead0e10d39.
 
 ## Syntax
 
-~~~
+```
 k8s_dns_chaos [ZONES...]
-~~~
+```
 
-The *k8s_dns_chaos* supports all options in plugin *[kubernetes](https://coredns.io/plugins/kubernetes/)*, besides, it also supports other configuration items for chaos.
+The _k8s_dns_chaos_ supports all options in plugin _[kubernetes](https://coredns.io/plugins/kubernetes/)_, besides, it also supports other configuration items for chaos.
 
 ```
 kubernetes [ZONES...] {
@@ -45,42 +45,42 @@ kubernetes [ZONES...] {
 }
 ```
 
-Only `[ZONES...]`, `chaos` and `grpcport` is different with plugin with *[kubernetes](https://coredns.io/plugins/kubernetes/)*:
+Only `[ZONES...]`, `chaos` and `grpcport` is different with plugin with _[kubernetes](https://coredns.io/plugins/kubernetes/)_:
 
-* `[ZONES...]` defines which zones of the host will be treated as internal hosts in the Kubernetes cluster.
+- `[ZONES...]` defines which zones of the host will be treated as internal hosts in the Kubernetes cluster.
 
-* `chaos` **ACTION** **SCOPE** **[PODS...]** set the behavior and scope of chaos. 
+- `chaos` **ACTION** **SCOPE** **[PODS...]** set the behavior and scope of chaos.
 
   Valid value for **Action**:
 
-  * `random`: return random IP for DNS request.
-  * `error`:  return error for DNS request.
+  - `random`: return random IP for DNS request.
+  - `error`: return error for DNS request.
 
   Valid value for **SCOPE**:
-    
-  * `inner`: chaos only works on the inner host of the Kubernetes cluster.
-  * `outer`: chaos only works on the outer host of the Kubernetes cluster.
-  * `all`:   chaos works on all the hosts.
+
+  - `inner`: chaos only works on the inner host of the Kubernetes cluster.
+  - `outer`: chaos only works on the outer host of the Kubernetes cluster.
+  - `all`: chaos works on all the hosts.
 
   **[PODS...]** defines which Pods will take effect, the format is `Namespace`.`PodName`.
 
-* `grpcport` **PORT** sets the port of GRPC service, which is used for the hot update of the chaos rules. The default value is `9288`. The interface of the GRPC service is defined in [dns.proto](pb/dns.proto).
+- `grpcport` **PORT** sets the port of GRPC service, which is used for the hot update of the chaos rules. The default value is `9288`. The interface of the GRPC service is defined in [dns.proto](pb/dns.proto).
 
 ## Examples
 
 All DNS requests in Pod `busybox.busybox-0` will get error:
 
 ```yaml
-    k8s_dns_chaos cluster.local in-addr.arpa ip6.arpa {
-        pods insecure
-        fallthrough in-addr.arpa ip6.arpa
-        ttl 30
-        chaos error all busybox.busybox-0
-    }
+k8s_dns_chaos cluster.local in-addr.arpa ip6.arpa {
+pods insecure
+fallthrough in-addr.arpa ip6.arpa
+ttl 30
+chaos error all busybox.busybox-0
+}
 ```
 
 The shell command below will execute failed:
-  
+
 ```shell
     kubectl exec busybox-0 -it -n busybox -- ping -c 1 google.com
     ping: bad address 'google.com'

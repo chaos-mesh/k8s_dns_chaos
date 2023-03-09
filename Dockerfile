@@ -3,7 +3,7 @@
 FROM golang:1.19 AS build-env
 ENV GO111MODULE on
 WORKDIR /
-RUN git clone --depth 1 --branch v1.7.1 https://github.com/coredns/coredns
+RUN git clone https://github.com/coredns/coredns && git checkout 7d5f5b87a4fb310d442f7ef0d52e3fead0e10d39
 COPY . /k8s_dns_chaos
 # RUN ln -s /k8s_dns_chaos /coredns/plugin/k8s_dns_chaos
 RUN echo "k8s_dns_chaos:github.com/chaos-mesh/k8s_dns_chaos" >> /coredns/plugin.cfg
