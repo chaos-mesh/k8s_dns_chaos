@@ -1,8 +1,6 @@
 # k8s_dns_chaos
 
-## Name
-
-_k8s_dns_chaos_ - enables inject DNS chaos in a Kubernetes cluster for Chaos Engineering.
+Used to inject DNS chaos into a Kubernetes cluster. This is the DNS server for the Chaos Mesh `DNSChaos`.
 
 ## Description
 
