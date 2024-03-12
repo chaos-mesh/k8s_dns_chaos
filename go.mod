@@ -1,7 +1,7 @@
 go 1.19
 
 require (
-	github.com/caddyserver/caddy v1.0.5
+	github.com/caddyserver/caddy v1.0.4
 	github.com/coredns/coredns v1.7.0
 	github.com/golang/protobuf v1.5.2
 	github.com/miekg/dns v1.1.43
@@ -39,7 +39,7 @@ require (
 	github.com/pingcap/check v0.0.0-20211026125417-57bd13f7b5f0 // indirect
 	github.com/pingcap/errors v0.11.4 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/prometheus/client_model v0.6.0 // indirect
+	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.31.1 // indirect
 	github.com/prometheus/procfs v0.6.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
