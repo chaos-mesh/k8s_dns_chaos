@@ -1,8 +1,7 @@
 name: Upload Image
 on:
-  workflow_dispatch: {}
-  release:
-    types: [published]
+  pull_request:
+    types: ["opened", "synchronize"]
 
 jobs:
   build-docker-image:
