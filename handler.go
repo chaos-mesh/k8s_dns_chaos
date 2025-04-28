@@ -2,7 +2,6 @@ package kubernetes
 
 import (
 	"context"
-
 	"github.com/coredns/coredns/plugin"
 	"github.com/coredns/coredns/request"
 
@@ -22,9 +21,12 @@ func (k Kubernetes) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 
 	records, extra, zone, err := k.getRecords(ctx, state)
 	log.Debugf("records: %v, err: %v", records, err)
-
-	if k.needChaos(chaosPod, records, state.QName()) {
+	if k.needChaos(chaosPod, records, state.QName()) && chaosPod.Action != ActionStatic {
 		return k.chaosDNS(ctx, w, r, state, chaosPod)
+	}
+	if k.needChaos(chaosPod, records, state.QName()) && chaosPod.Action == ActionStatic {
+		log.Infof("need chaos, but action is static")
+		return generateDNSRecords(state, k.domainAndIPMap[chaosPod.Namespace][chaosPod.Name], r, w)
 	}
 
 	if k.IsNameError(err) {

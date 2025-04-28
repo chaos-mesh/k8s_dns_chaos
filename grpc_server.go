@@ -44,7 +44,6 @@ func (k Kubernetes) SetDNSChaos(ctx context.Context, req *pb.SetDNSChaosRequest)
 
 	k.Lock()
 	defer k.Unlock()
-
 	k.chaosMap[req.Name] = req
 
 	var scope string
@@ -64,6 +63,15 @@ func (k Kubernetes) SetDNSChaos(ctx context.Context, req *pb.SetDNSChaosRequest)
 		if !strings.Contains(pattern, "*") {
 			// when send dns request to the dns server, will add a '.' at the end of the domain name.
 			err := selector.Insert(fmt.Sprintf("%s.", pattern), "", true, trieselector.Insert)
+			if err != nil {
+				log.Errorf("fail to build selector %v", err)
+				return nil, err
+			}
+		}
+	}
+	if req.Action == ActionStatic && req.IpDomainMaps != nil {
+		for _, domainIPMap := range req.IpDomainMaps {
+			err := selector.Insert(domainIPMap.Domain, "", true, trieselector.Insert)
 			if err != nil {
 				log.Errorf("fail to build selector %v", err)
 				return nil, err
@@ -100,8 +108,15 @@ func (k Kubernetes) SetDNSChaos(ctx context.Context, req *pb.SetDNSChaosRequest)
 
 		k.podMap[pod.Namespace][pod.Name] = podInfo
 		k.ipPodMap[v1Pod.Status.PodIP] = podInfo
-	}
+		domainIPMap := saveDomainAndIp(req.IpDomainMaps)
+		if domainIPMap != nil {
+			if _, ok := k.domainAndIPMap[pod.Namespace]; !ok {
+				k.domainAndIPMap[pod.Namespace] = make(map[string]map[string]string)
+			}
+			k.domainAndIPMap[pod.Namespace][pod.Name] = domainIPMap
+		}
 
+	}
 	return &pb.DNSChaosResponse{
 		Result: true,
 	}, nil
@@ -125,6 +140,9 @@ func (k Kubernetes) CancelDNSChaos(ctx context.Context, req *pb.CancelDNSChaosRe
 				delete(k.podMap[pod.Namespace], pod.Name)
 				delete(k.ipPodMap, podInfo.IP)
 			}
+			if _, ok1 := k.domainAndIPMap[pod.Namespace][pod.Name]; ok1 {
+				delete(k.domainAndIPMap[pod.Namespace], pod.Name)
+			}
 		}
 	}
 
@@ -136,6 +154,7 @@ func (k Kubernetes) CancelDNSChaos(ctx context.Context, req *pb.CancelDNSChaosRe
 	}
 	for _, namespace := range shouldDeleteNs {
 		delete(k.podMap, namespace)
+		delete(k.domainAndIPMap, namespace)
 	}
 
 	delete(k.chaosMap, req.Name)
@@ -143,4 +162,17 @@ func (k Kubernetes) CancelDNSChaos(ctx context.Context, req *pb.CancelDNSChaosRe
 	return &pb.DNSChaosResponse{
 		Result: true,
 	}, nil
+}
+
+// save domain and ip
+func saveDomainAndIp(domainMapList []*pb.IpDomainMap) map[string]string {
+	if len(domainMapList) == 0 {
+		return nil
+	}
+	domainIPMap := make(map[string]string)
+	for _, domainMap := range domainMapList {
+		key := fmt.Sprintf("%s.", domainMap.Domain)
+		domainIPMap[key] = domainMap.Ip
+	}
+	return domainIPMap
 }

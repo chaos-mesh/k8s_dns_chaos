@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package pb;
-
+option go_package = "./pb";
 service DNS {
   rpc SetDNSChaos(SetDNSChaosRequest) returns (DNSChaosResponse) {}
   rpc CancelDNSChaos(CancelDNSChaosRequest) returns (DNSChaosResponse) {}
@@ -23,6 +23,7 @@ message SetDNSChaosRequest {
   string scope = 4;
   string selector = 5;
   repeated string patterns = 6;
+  repeated IpDomainMap ipDomainMaps = 7;
 }
 
 message Pod {
@@ -37,4 +38,10 @@ message CancelDNSChaosRequest {
 message DNSChaosResponse {
   bool result = 1;
   string msg = 2;
+}
+
+//定义ip 域名的映射关系
+message IpDomainMap {
+  string ip = 1;
+  string domain = 2;
 }

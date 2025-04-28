@@ -5,13 +5,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/chaos-mesh/k8s_dns_chaos/pb"
 	"math/rand"
 	"net"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/chaos-mesh/k8s_dns_chaos/pb"
 	"github.com/coredns/coredns/plugin"
 	"github.com/coredns/coredns/plugin/etcd/msg"
 	"github.com/coredns/coredns/plugin/kubernetes/object"
@@ -68,6 +68,8 @@ type Kubernetes struct {
 	podMap map[string]map[string]*PodInfo
 
 	ipPodMap map[string]*PodInfo
+
+	domainAndIPMap map[string]map[string]map[string]string
 }
 
 // New returns a initialized Kubernetes. It default interfaceAddrFunc to return 127.0.0.1. All other
@@ -81,6 +83,7 @@ func New(zones []string) *Kubernetes {
 	k.chaosMap = make(map[string]*pb.SetDNSChaosRequest)
 	k.podMap = make(map[string]map[string]*PodInfo)
 	k.ipPodMap = make(map[string]*PodInfo)
+	k.domainAndIPMap = make(map[string]map[string]map[string]string)
 	rand.Seed(time.Now().UnixNano())
 
 	return k

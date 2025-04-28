@@ -26,6 +26,8 @@ const (
 	ActionError = "error"
 	// ActionRandom means return random IP for DNS request
 	ActionRandom = "random"
+	// ActionChaos means return chaos IP for DNS request
+	ActionStatic = "static"
 )
 
 // PodInfo saves some information for pod
@@ -37,6 +39,12 @@ type PodInfo struct {
 	Selector       selector.Selector
 	IP             string
 	LastUpdateTime time.Time
+}
+
+// DomainIP Domain and ip mapping
+type DomainIP struct {
+	Domain string
+	IP     string
 }
 
 // IsOverdue ...
@@ -55,7 +63,13 @@ func (k Kubernetes) chaosDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 		return dns.RcodeServerFailure, fmt.Errorf("dns chaos error")
 	}
 
-	// return random IP
+	//return static IP
+	if podInfo.Action == ActionStatic {
+		//return staticIP(ctx, w, r, state, podInfo)
+		//k.chaosMap
+		domainAndIPMap := k.domainAndIPMap[podInfo.Namespace][podInfo.Name]
+		return generateDNSRecords(state, domainAndIPMap, r, w)
+	}
 
 	answers := []dns.RR{}
 	qname := state.Name()
@@ -166,6 +180,9 @@ func (k Kubernetes) needChaos(podInfo *PodInfo, records []dns.RR, name string) b
 	if podInfo.Scope == ScopeAll {
 		return true
 	}
+	if podInfo.Action == ActionStatic && k.domainAndIPMap[podInfo.Namespace][podInfo.Name] != nil {
+		return true
+	}
 
 	rules := podInfo.Selector.Match(name, "")
 	if len(rules) == 0 {
@@ -187,4 +204,35 @@ func (k Kubernetes) getPodFromCluster(namespace, name string) (*api.Pod, error) 
 		return nil, nil
 	}
 	return pods.Get(context.Background(), name, meta.GetOptions{})
+}
+
+func generateDNSRecords(state request.Request, domainAndIpMap map[string]string, r *dns.Msg, w dns.ResponseWriter) (int, error) {
+	answers := []dns.RR{}
+	qname := state.Name()
+	if domainAndIpMap == nil {
+		return dns.RcodeServerFailure, nil
+	}
+	ip, ok := domainAndIpMap[qname]
+	if !ok {
+		//如果不存在则
+		return dns.RcodeServerFailure, fmt.Errorf("domain %s not found", qname)
+	}
+	switch state.QType() {
+	case dns.TypeA:
+		ips := []net.IP{net.ParseIP(ip)}
+		log.Debugf("dns.TypeA %v", ips)
+		answers = a(qname, 10, ips)
+	case dns.TypeAAAA:
+		// TODO: return random IP
+		ips := []net.IP{net.ParseIP(ip)}
+		log.Debugf("dns.TypeAAAA %v", ips)
+		answers = aaaa(qname, 10, ips)
+	}
+	m := new(dns.Msg)
+	m.SetReply(r)
+	m.Authoritative = true
+	m.Answer = answers
+
+	w.WriteMsg(m)
+	return dns.RcodeSuccess, nil
 }
