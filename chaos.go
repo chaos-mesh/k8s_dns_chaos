@@ -63,14 +63,6 @@ func (k Kubernetes) chaosDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 		return dns.RcodeServerFailure, fmt.Errorf("dns chaos error")
 	}
 
-	//return static IP
-	if podInfo.Action == ActionStatic {
-		//return staticIP(ctx, w, r, state, podInfo)
-		//k.chaosMap
-		domainAndIPMap := k.domainAndIPMap[podInfo.Namespace][podInfo.Name]
-		return generateDNSRecords(state, domainAndIPMap, r, w)
-	}
-
 	answers := []dns.RR{}
 	qname := state.Name()
 
@@ -180,8 +172,14 @@ func (k Kubernetes) needChaos(podInfo *PodInfo, records []dns.RR, name string) b
 	if podInfo.Scope == ScopeAll {
 		return true
 	}
-	if podInfo.Action == ActionStatic && k.domainAndIPMap[podInfo.Namespace][podInfo.Name] != nil {
-		return true
+	if podInfo.Action == ActionStatic {
+		domainMap := k.domainAndIPMap[podInfo.Namespace][podInfo.Name]
+		if domainMap != nil {
+			if _, ok := domainMap[name]; ok {
+				return true
+			}
+		}
+		return false
 	}
 
 	rules := podInfo.Selector.Match(name, "")
@@ -212,21 +210,26 @@ func generateDNSRecords(state request.Request, domainAndIpMap map[string]string,
 	if domainAndIpMap == nil {
 		return dns.RcodeServerFailure, nil
 	}
-	ip, ok := domainAndIpMap[qname]
+	ipStr, ok := domainAndIpMap[qname]
 	if !ok {
-		//如果不存在则
 		return dns.RcodeServerFailure, fmt.Errorf("domain %s not found", qname)
 	}
+	ip := net.ParseIP(ipStr)
 	switch state.QType() {
 	case dns.TypeA:
-		ips := []net.IP{net.ParseIP(ip)}
-		log.Debugf("dns.TypeA %v", ips)
-		answers = a(qname, 10, ips)
+		ipv4 := ip.To4()
+		if ipv4 == nil {
+			return dns.RcodeServerFailure, fmt.Errorf("not a valid IPv4 address: %s", ipStr)
+		}
+		answers = a(qname, 10, []net.IP{ipv4})
+		log.Debugf("dns.TypeA %v", ipv4)
 	case dns.TypeAAAA:
-		// TODO: return random IP
-		ips := []net.IP{net.ParseIP(ip)}
-		log.Debugf("dns.TypeAAAA %v", ips)
-		answers = aaaa(qname, 10, ips)
+		ipv6 := ip.To16()
+		if ip.To4() != nil {
+			return dns.RcodeServerFailure, fmt.Errorf("not a valid IPv6 address: %s", ipStr)
+		}
+		log.Debugf("dns.TypeAAAA %v", ipv6)
+		answers = aaaa(qname, 10, []net.IP{ipv6})
 	}
 	m := new(dns.Msg)
 	m.SetReply(r)
