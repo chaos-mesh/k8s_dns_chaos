@@ -28,7 +28,7 @@ func (k Kubernetes) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 	if k.needChaos(chaosPod, records, state.QName()) && chaosPod.Action == ActionStatic {
 		log.Debugf("need chaos, but action is static")
 		// Get the domain-IP mapping for the specific namespace and pod name.
-		domainMap := k.domainAndIPMap[chaosPod.Namespace][chaosPod.Name]
+		domainMap := k.domainIPMapByNamespacedName[chaosPod.Namespace][chaosPod.Name]
 		// Check if the domain-IP mapping exists.
 		if domainMap != nil {
 			// Check if the requested domain exists in the mapping.

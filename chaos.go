@@ -41,12 +41,6 @@ type PodInfo struct {
 	LastUpdateTime time.Time
 }
 
-// DomainIP Domain and ip mapping
-type DomainIP struct {
-	Domain string
-	IP     string
-}
-
 // IsOverdue ...
 func (p *PodInfo) IsOverdue() bool {
 	// if the pod's IP is not updated greater than 10 seconds, will treate it as overdue
@@ -173,7 +167,7 @@ func (k Kubernetes) needChaos(podInfo *PodInfo, records []dns.RR, name string) b
 		return true
 	}
 	if podInfo.Action == ActionStatic {
-		domainMap := k.domainAndIPMap[podInfo.Namespace][podInfo.Name]
+		domainMap := k.domainIPMapByNamespacedName[podInfo.Namespace][podInfo.Name]
 		if domainMap != nil {
 			if _, ok := domainMap[name]; ok {
 				return true
@@ -204,13 +198,13 @@ func (k Kubernetes) getPodFromCluster(namespace, name string) (*api.Pod, error) 
 	return pods.Get(context.Background(), name, meta.GetOptions{})
 }
 
-func generateDNSRecords(state request.Request, domainAndIpMap map[string]string, r *dns.Msg, w dns.ResponseWriter) (int, error) {
+func generateDNSRecords(state request.Request, domainIPMapByNamespacedName map[string]string, r *dns.Msg, w dns.ResponseWriter) (int, error) {
 	answers := []dns.RR{}
 	qname := state.Name()
-	if domainAndIpMap == nil {
+	if domainIPMapByNamespacedName == nil {
 		return dns.RcodeServerFailure, nil
 	}
-	ipStr, ok := domainAndIpMap[qname]
+	ipStr, ok := domainIPMapByNamespacedName[qname]
 	if !ok {
 		return dns.RcodeServerFailure, fmt.Errorf("domain %s not found", qname)
 	}

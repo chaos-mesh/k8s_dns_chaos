@@ -40,7 +40,8 @@ message DNSChaosResponse {
   string msg = 2;
 }
 
-//定义ip 域名的映射关系
+// Defines the mapping relationship between an IP address and a domain name.
+// This structure represents a single IP-to-domain pair.
 message IpDomainMap {
   string ip = 1;
   string domain = 2;

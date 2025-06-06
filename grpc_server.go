@@ -110,10 +110,10 @@ func (k Kubernetes) SetDNSChaos(ctx context.Context, req *pb.SetDNSChaosRequest)
 		k.ipPodMap[v1Pod.Status.PodIP] = podInfo
 		domainIPMap := saveDomainAndIp(req.IpDomainMaps)
 		if domainIPMap != nil {
-			if _, ok := k.domainAndIPMap[pod.Namespace]; !ok {
-				k.domainAndIPMap[pod.Namespace] = make(map[string]map[string]string)
+			if _, ok := k.domainIPMapByNamespacedName[pod.Namespace]; !ok {
+				k.domainIPMapByNamespacedName[pod.Namespace] = make(map[string]map[string]string)
 			}
-			k.domainAndIPMap[pod.Namespace][pod.Name] = domainIPMap
+			k.domainIPMapByNamespacedName[pod.Namespace][pod.Name] = domainIPMap
 		}
 
 	}
@@ -140,8 +140,8 @@ func (k Kubernetes) CancelDNSChaos(ctx context.Context, req *pb.CancelDNSChaosRe
 				delete(k.podMap[pod.Namespace], pod.Name)
 				delete(k.ipPodMap, podInfo.IP)
 			}
-			if _, ok1 := k.domainAndIPMap[pod.Namespace][pod.Name]; ok1 {
-				delete(k.domainAndIPMap[pod.Namespace], pod.Name)
+			if _, ok1 := k.domainIPMapByNamespacedName[pod.Namespace][pod.Name]; ok1 {
+				delete(k.domainIPMapByNamespacedName[pod.Namespace], pod.Name)
 			}
 		}
 	}
@@ -154,7 +154,7 @@ func (k Kubernetes) CancelDNSChaos(ctx context.Context, req *pb.CancelDNSChaosRe
 	}
 	for _, namespace := range shouldDeleteNs {
 		delete(k.podMap, namespace)
-		delete(k.domainAndIPMap, namespace)
+		delete(k.domainIPMapByNamespacedName, namespace)
 	}
 
 	delete(k.chaosMap, req.Name)
