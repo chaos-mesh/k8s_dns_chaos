@@ -9,7 +9,6 @@ require (
 	github.com/miekg/dns v1.1.43
 	github.com/pingcap/tidb-tools v6.3.0+incompatible
 	github.com/prometheus/client_golang v1.11.0
-	golang.org/x/net v0.0.0-20210614182718-04defd469f4e
 	google.golang.org/grpc v1.41.0
 	k8s.io/api v0.22.2
 	k8s.io/apimachinery v0.22.2
@@ -45,6 +44,7 @@ require (
 	github.com/prometheus/common v0.31.1 // indirect
 	github.com/prometheus/procfs v0.6.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
+	golang.org/x/net v0.0.0-20210614182718-04defd469f4e // indirect
 	golang.org/x/oauth2 v0.0.0-20210819190943-2bc19b11175f // indirect
 	golang.org/x/sys v0.0.0-20210917161153-d61c044b1678 // indirect
 	golang.org/x/term v0.0.0-20210220032956-6a3ed077a48d // indirect
