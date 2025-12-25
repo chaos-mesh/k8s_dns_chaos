@@ -22,9 +22,22 @@ func (k Kubernetes) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 
 	records, extra, zone, err := k.getRecords(ctx, state)
 	log.Debugf("records: %v, err: %v", records, err)
-
-	if k.needChaos(chaosPod, records, state.QName()) {
+	if k.needChaos(chaosPod, records, state.QName()) && chaosPod.Action != ActionStatic {
 		return k.chaosDNS(ctx, w, r, state, chaosPod)
+	}
+	// Check if chaos testing is needed and the action type is static IP.
+	if k.needChaos(chaosPod, records, state.QName()) && chaosPod.Action == ActionStatic {
+		log.Debugf("need chaos, but action is static")
+		// Get the domain-IP mapping for the specific namespace and pod name.
+		domainMap := k.domainIPMapByNamespacedName[chaosPod.Namespace][chaosPod.Name]
+		// Check if the domain-IP mapping exists.
+		if domainMap != nil {
+			// Check if the requested domain exists in the mapping.
+			if _, ok := domainMap[state.Name()]; ok {
+				// Generate DNS records using the domain-IP mapping and return the result.
+				return generateDNSRecords(state, domainMap, r, w)
+			}
+		}
 	}
 
 	if k.IsNameError(err) {
