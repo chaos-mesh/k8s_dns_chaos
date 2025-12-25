@@ -1,6 +1,6 @@
 module github.com/chaos-mesh/k8s_dns_chaos
 
-go 1.19
+go 1.25
 
 require (
 	github.com/caddyserver/caddy v1.0.5
