@@ -1,7 +1,6 @@
 # syntax=docker/dockerfile:experimental
 
-FROM golang:1.19 AS build-env
-ENV GO111MODULE on
+FROM golang:1.25 AS build-env
 WORKDIR /
 RUN git clone https://github.com/coredns/coredns && cd coredns && git checkout 7d5f5b87a4fb310d442f7ef0d52e3fead0e10d39
 COPY . /k8s_dns_chaos
