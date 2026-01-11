@@ -57,3 +57,5 @@ require (
 )
 
 replace github.com/chaos-mesh/k8s_dns_chaos => /k8s_dns_chaos
+
+replace google.golang.org/grpc => google.golang.org/grpc v1.29.1

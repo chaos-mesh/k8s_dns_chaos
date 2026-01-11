@@ -47,8 +47,6 @@ func (p *PodInfo) IsOverdue() bool {
 
 // DNSChaos is the main plugin struct
 type DNSChaos struct {
-	pb.UnimplementedDNSServer
-
 	Next plugin.Handler
 
 	grpcPort          int
