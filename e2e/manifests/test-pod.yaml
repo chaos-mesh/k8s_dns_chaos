@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-client
+  namespace: chaos-dns-e2e
+  labels:
+    app: test-client
+spec:
+  containers:
+  - name: client
+    image: busybox:1.35
+    command: ["sleep", "3600"]
+  dnsPolicy: "None"
+  dnsConfig:
+    nameservers:
+    - "CHAOS_COREDNS_IP"
+    searches:
+    - chaos-dns-e2e.svc.cluster.local
+    - svc.cluster.local
+    - cluster.local
