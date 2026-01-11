@@ -5,25 +5,24 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 NAMESPACE="chaos-dns-e2e"
 IMAGE="ghcr.io/chaos-mesh/chaos-coredns:e2e-test"
+MINIKUBE_PROFILE="chaos-dns-e2e"
 
 cleanup() {
     echo "==> Cleaning up..."
-    kubectl delete namespace ${NAMESPACE} --ignore-not-found=true || true
-    kubectl delete clusterrole chaos-coredns-e2e --ignore-not-found=true || true
-    kubectl delete clusterrolebinding chaos-coredns-e2e --ignore-not-found=true || true
     pkill -f "port-forward.*${NAMESPACE}" || true
+    minikube delete -p ${MINIKUBE_PROFILE} || true
 }
 trap cleanup EXIT
 
 echo "==> Starting minikube (if not running)..."
-minikube status > /dev/null 2>&1 || minikube start --driver=docker
+minikube status -p ${MINIKUBE_PROFILE} > /dev/null 2>&1 || minikube start -p ${MINIKUBE_PROFILE} --driver=docker
 
 echo "==> Building image..."
 cd "${PROJECT_DIR}"
 DOCKER_BUILDKIT=1 docker build -t ${IMAGE} .
 
 echo "==> Loading image into minikube..."
-minikube image load ${IMAGE}
+minikube image load -p ${MINIKUBE_PROFILE} ${IMAGE}
 
 echo "==> Deploying manifests..."
 kubectl apply -f "${SCRIPT_DIR}/manifests/namespace.yaml"
