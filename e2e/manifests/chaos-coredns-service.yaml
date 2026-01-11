@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: chaos-coredns
+  namespace: chaos-dns-e2e
+  labels:
+    app: chaos-coredns
+spec:
+  selector:
+    app: chaos-coredns
+  ports:
+  - name: dns
+    port: 53
+    protocol: UDP
+    targetPort: 53
+  - name: dns-tcp
+    port: 53
+    protocol: TCP
+    targetPort: 53
+  - name: grpc
+    port: 9288
+    protocol: TCP
+    targetPort: 9288
+  - name: metrics
+    port: 9153
+    protocol: TCP
+    targetPort: 9153
+  type: ClusterIP

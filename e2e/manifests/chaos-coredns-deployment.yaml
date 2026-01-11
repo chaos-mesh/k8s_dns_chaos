@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chaos-coredns
+  namespace: chaos-dns-e2e
+  labels:
+    app: chaos-coredns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: chaos-coredns
+  template:
+    metadata:
+      labels:
+        app: chaos-coredns
+    spec:
+      serviceAccountName: chaos-coredns
+      containers:
+      - name: coredns
+        image: ghcr.io/chaos-mesh/chaos-coredns:e2e-test
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 53
+          name: dns
+          protocol: UDP
+        - containerPort: 53
+          name: dns-tcp
+          protocol: TCP
+        - containerPort: 9288
+          name: grpc
+          protocol: TCP
+        - containerPort: 9153
+          name: metrics
+          protocol: TCP
+        args: ["-conf", "/etc/coredns/Corefile"]
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/coredns
+          readOnly: true
+        resources:
+          limits:
+            memory: 170Mi
+          requests:
+            cpu: 100m
+            memory: 70Mi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 60
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8181
+            scheme: HTTP
+      volumes:
+      - name: config-volume
+        configMap:
+          name: chaos-coredns-config
+          items:
+          - key: Corefile
+            path: Corefile

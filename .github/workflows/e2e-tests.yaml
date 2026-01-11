@@ -1,0 +1,38 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Install minikube
+        run: |
+          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+          sudo install minikube-linux-amd64 /usr/local/bin/minikube
+          rm minikube-linux-amd64
+
+      - name: Run E2E tests
+        run: ./e2e/e2e.sh
+
+      - name: Collect logs on failure
+        if: failure()
+        run: |
+          echo "=== Chaos CoreDNS Logs ==="
+          kubectl -n chaos-dns-e2e logs -l app=chaos-coredns --tail=200 || true
+          echo "=== Test Pod Status ==="
+          kubectl -n chaos-dns-e2e describe pod test-client || true
+          echo "=== All Pods ==="
+          kubectl -n chaos-dns-e2e get pods -o wide || true
