@@ -12,7 +12,11 @@ coredns: image ## Build the coredns executable binary
 
 protoc: ## Generate the protobuf code
 	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-	protoc --proto_path=pb --go_out=pb --go_opt=paths=source_relative ./pb/dns.proto
+	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+	protoc --proto_path=pb \
+		--go_out=pb --go_opt=paths=source_relative \
+		--go-grpc_out=pb --go-grpc_opt=paths=source_relative \
+		./pb/dns.proto
 
 # The help will print out all targets with their descriptions organized bellow their categories. The categories are represented by `##@` and the target descriptions by `##`.
 # The awk commands is responsible to read the entire set of makefiles included in this invocation, looking for lines of the file as xyz: ## something, and then pretty-format the target and help. Then, if there's a line with ##@ something, that gets pretty-printed as a category.

@@ -9,7 +9,6 @@ RUN sed -i '/kubernetes/i\dns_chaos:github.com/chaos-mesh/k8s_dns_chaos/chaos' /
 RUN cd coredns && \
     go mod edit -require github.com/chaos-mesh/k8s_dns_chaos@v0.0.0-00000000000000-000000000000 && \
     go mod edit -replace github.com/chaos-mesh/k8s_dns_chaos=/k8s_dns_chaos && \
-    go mod edit -replace google.golang.org/grpc=google.golang.org/grpc@v1.29.1 && \
     go get github.com/chaos-mesh/k8s_dns_chaos/chaos && \
     go generate && \
     go mod tidy
