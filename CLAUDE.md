@@ -51,11 +51,15 @@ DNS Request → dns_chaos → (if chaos) → Return error/random
 
 ### Dependencies
 
-- CoreDNS v1.11.3 with `github.com/coredns/caddy` (forked Caddy v1)
-- Kubernetes client-go v0.29.x
-- gRPC v1.63.x
+- CoreDNS v1.13.2 with `github.com/coredns/caddy` (forked Caddy v1)
+- Kubernetes client-go v0.34.x
+- gRPC v1.77.x
 
 ## Code Style
 
 - No end-of-line comments
 - No Chinese in code comments
+
+## Git Commits
+
+- All commits must include the `-s` / `--signoff` flag (e.g., `git commit -s -m "message"`)
