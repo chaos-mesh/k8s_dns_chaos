@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:experimental
 
-FROM golang:1.22 AS build-env
+FROM golang:1.24 AS build-env
 WORKDIR /app
 COPY . .
 RUN go mod tidy && CGO_ENABLED=0 go build -o coredns ./cmd/coredns
