@@ -7,6 +7,7 @@ require (
 	github.com/coredns/coredns v1.11.3
 	github.com/miekg/dns v1.1.58
 	github.com/pingcap/tidb-tools v6.3.0+incompatible
+	github.com/stretchr/testify v1.8.4
 	google.golang.org/grpc v1.63.2
 	google.golang.org/protobuf v1.33.0
 	k8s.io/api v0.29.3
@@ -67,6 +68,7 @@ require (
 	github.com/pingcap/check v0.0.0-20211026125417-57bd13f7b5f0 // indirect
 	github.com/pingcap/errors v0.11.4 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_golang v1.19.0 // indirect
 	github.com/prometheus/client_model v0.6.0 // indirect
 	github.com/prometheus/common v0.53.0 // indirect
