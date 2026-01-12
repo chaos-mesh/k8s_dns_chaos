@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:experimental
 
-FROM golang:1.25 AS build-env
+FROM golang:1.22 AS build-env
 WORKDIR /app
 COPY . .
 RUN go mod tidy && CGO_ENABLED=0 go build -o coredns ./cmd/coredns
@@ -14,5 +14,4 @@ LABEL org.opencontainers.image.source=https://github.com/chaos-mesh/k8s_dns_chao
 COPY --from=certs /etc/ssl/certs /etc/ssl/certs
 COPY --from=build-env /app/coredns /coredns
 EXPOSE 53 53/udp
-ENV GOLANG_PROTOBUF_REGISTRATION_CONFLICT=warn
 ENTRYPOINT ["/coredns"]

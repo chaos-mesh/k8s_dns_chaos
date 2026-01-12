@@ -4,8 +4,8 @@ import (
 	// Import dns_chaos plugin
 	_ "github.com/chaos-mesh/k8s_dns_chaos/chaos"
 
-	// Import all CoreDNS plugins we need (excluding azure, clouddns, route53)
-	_ "github.com/caddyserver/caddy/onevent"
+	// Import CoreDNS plugins we need
+	_ "github.com/coredns/caddy/onevent"
 	_ "github.com/coredns/coredns/plugin/acl"
 	_ "github.com/coredns/coredns/plugin/any"
 	_ "github.com/coredns/coredns/plugin/auto"
@@ -21,7 +21,6 @@ import (
 	_ "github.com/coredns/coredns/plugin/dnstap"
 	_ "github.com/coredns/coredns/plugin/erratic"
 	_ "github.com/coredns/coredns/plugin/errors"
-	_ "github.com/coredns/coredns/plugin/etcd"
 	_ "github.com/coredns/coredns/plugin/file"
 	_ "github.com/coredns/coredns/plugin/forward"
 	_ "github.com/coredns/coredns/plugin/grpc"
@@ -52,7 +51,7 @@ import (
 	"github.com/coredns/coredns/coremain"
 )
 
-// Directives define the plugin execution order (from plugin.cfg v1.7.0)
+// Directives define the plugin execution order
 // dns_chaos is inserted before kubernetes to intercept DNS requests
 var directives = []string{
 	"metadata",
@@ -90,7 +89,6 @@ var directives = []string{
 	"file",
 	"auto",
 	"secondary",
-	"etcd",
 	"loop",
 	"forward",
 	"grpc",

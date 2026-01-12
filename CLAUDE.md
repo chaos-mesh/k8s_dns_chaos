@@ -11,7 +11,7 @@ make image
 # Build and extract CoreDNS binary to ./coredns
 make coredns
 
-# Regenerate protobuf code (uses old-style protoc-gen-go for gRPC v1.29.1 compatibility)
+# Regenerate protobuf code
 make protoc
 ```
 
@@ -49,9 +49,11 @@ DNS Request → dns_chaos → (if chaos) → Return error/random
 - `podMap`: Maps namespace → pod name → PodInfo (chaos config per pod)
 - `ipPodMap`: Maps source IP → PodInfo (for fast lookup during DNS requests)
 
-### Dependency Constraints
+### Dependencies
 
-The Dockerfile pins `google.golang.org/grpc@v1.29.1` because CoreDNS v1.7.0's etcd plugin requires the deprecated `grpc/naming` package. The `clouddns` and `route53` plugins are removed to avoid cloud.google.com module conflicts.
+- CoreDNS v1.11.3 with `github.com/coredns/caddy` (forked Caddy v1)
+- Kubernetes client-go v0.29.x
+- gRPC v1.63.x
 
 ## Code Style
 
