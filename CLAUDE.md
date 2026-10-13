@@ -17,6 +17,8 @@ make protoc
 
 ## Testing
 
+Run `make check` for unit tests, race checks, E2E compilation, static analysis, and module consistency.
+
 E2E tests require a running Kubernetes cluster with chaos-coredns deployed. Tests use `kubectl exec` to run `nslookup` commands inside a test pod:
 
 ```bash
@@ -30,6 +32,7 @@ This is a standalone CoreDNS plugin (`dns_chaos`) for Chaos Mesh's DNSChaos feat
 ### Plugin Chain Position
 
 The plugin sits **before** the kubernetes plugin in the CoreDNS plugin chain:
+
 ```
 DNS Request → dns_chaos → (if chaos) → Return error/random
                        → (if no chaos) → kubernetes plugin → DNS Response
@@ -41,7 +44,7 @@ DNS Request → dns_chaos → (if chaos) → Return error/random
 - **chaos/grpc_server.go**: gRPC server exposing `SetDNSChaos` and `CancelDNSChaos` RPCs for runtime configuration
 - **chaos/pod_tracker.go**: Tracks pod IPs and refreshes them from the Kubernetes API
 - **chaos/setup.go**: CoreDNS plugin registration and Corefile directive parsing
-- **pb/dns.proto**: gRPC service definition
+- **pb/dns_chaos.proto**: gRPC service definition
 
 ### Key Data Structures
 
@@ -51,9 +54,10 @@ DNS Request → dns_chaos → (if chaos) → Return error/random
 
 ### Dependencies
 
-- CoreDNS v1.13.2 with `github.com/coredns/caddy` (forked Caddy v1)
-- Kubernetes client-go v0.34.x
-- gRPC v1.77.x
+- Go v1.26.x
+- CoreDNS v1.14.6 with `github.com/coredns/caddy` (forked Caddy v1)
+- Kubernetes client-go v0.35.x
+- gRPC v1.83.x
 
 ## Code Style
 

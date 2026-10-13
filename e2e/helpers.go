@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net"
 	"os/exec"
-	"regexp"
 	"strings"
 )
 
@@ -56,11 +55,6 @@ func isDNSError(output string) bool {
 		strings.Contains(lowerOutput, "connection timed out") ||
 		strings.Contains(lowerOutput, "no answer") ||
 		strings.Contains(lowerOutput, "nxdomain")
-}
-
-func isValidIPv4(ip string) bool {
-	ipv4Regex := regexp.MustCompile(`^(\d{1,3}\.){3}\d{1,3}$`)
-	return ipv4Regex.MatchString(ip)
 }
 
 func isValidIP(ip string) bool {

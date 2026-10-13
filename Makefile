@@ -8,8 +8,15 @@ image: ## Build the latest container image
 coredns: ## Build the coredns executable binary locally
 	CGO_ENABLED=0 go build -o coredns ./cmd/coredns
 
-protoc: ## Generate the protobuf code (uses old-style protoc-gen-go with gRPC plugin for compatibility with CoreDNS's etcd dependency)
-	go install github.com/golang/protobuf/protoc-gen-go@v1.5.2
+.PHONY: check
+check: ## Run unit tests, compile E2E tests, and check Go code
+	go test -race -count=1 ./chaos ./cmd/coredns ./pb
+	go test -run '^$$' ./...
+	go vet ./...
+	go mod tidy -diff
+
+protoc: ## Generate protobuf and gRPC code with the project dependencies
+	go install github.com/golang/protobuf/protoc-gen-go
 	protoc --proto_path=pb --go_out=plugins=grpc,paths=source_relative:pb ./pb/dns_chaos.proto
 
 # The help will print out all targets with their descriptions organized bellow their categories. The categories are represented by `##@` and the target descriptions by `##`.

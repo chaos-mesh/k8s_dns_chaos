@@ -8,12 +8,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/chaos-mesh/k8s_dns_chaos/pb"
 	"github.com/coredns/coredns/plugin"
 	clog "github.com/coredns/coredns/plugin/pkg/log"
 	"github.com/coredns/coredns/request"
 	"github.com/miekg/dns"
-	selector "github.com/pingcap/tidb-tools/pkg/table-rule-selector"
 	typev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -34,15 +32,17 @@ const (
 type PodInfo struct {
 	Namespace      string
 	Name           string
+	RuleName       string
 	Action         string
-	Selector       selector.Selector
+	Matcher        *domainMatcher
 	IP             string
 	LastUpdateTime time.Time
+	refreshMu      sync.Mutex
 }
 
 // IsOverdue checks if the pod info needs refresh
 func (p *PodInfo) IsOverdue() bool {
-	return time.Since(p.LastUpdateTime) > 10*time.Second
+	return time.Since(p.LastUpdateTime) > podRefreshInterval
 }
 
 // DNSChaos is the main plugin struct
@@ -52,10 +52,17 @@ type DNSChaos struct {
 	grpcPort          int
 	kubeconfigPath    string
 	kubeconfigContext string
-	Client            typev1.CoreV1Interface
+	grpcState         *grpcServerState
+	*chaosRuntime
+}
+
+type chaosRuntime struct {
+	Client           typev1.CoreV1Interface
+	refreshSweepMu   sync.Mutex
+	lastRefreshSweep time.Time
 
 	sync.RWMutex
-	chaosMap map[string]*pb.SetDNSChaosRequest
+	chaosMap map[string]chaosRule
 	podMap   map[string]map[string]*PodInfo
 	ipPodMap map[string]*PodInfo
 }
@@ -63,10 +70,13 @@ type DNSChaos struct {
 // New creates a new DNSChaos instance
 func New() *DNSChaos {
 	return &DNSChaos{
-		grpcPort: 9288,
-		chaosMap: make(map[string]*pb.SetDNSChaosRequest),
-		podMap:   make(map[string]map[string]*PodInfo),
-		ipPodMap: make(map[string]*PodInfo),
+		grpcPort:  9288,
+		grpcState: &grpcServerState{},
+		chaosRuntime: &chaosRuntime{
+			chaosMap: make(map[string]chaosRule),
+			podMap:   make(map[string]map[string]*PodInfo),
+			ipPodMap: make(map[string]*PodInfo),
+		},
 	}
 }
 
@@ -79,7 +89,7 @@ func (c *DNSChaos) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Ms
 	sourceIP := state.IP()
 	log.Debugf("dns_chaos ServeDNS, source IP: %s, qname: %s", sourceIP, state.QName())
 
-	podInfo := c.getChaosPod(sourceIP)
+	podInfo := c.getChaosPod(ctx, sourceIP)
 	if podInfo == nil {
 		return plugin.NextOrFailure(c.Name(), c.Next, ctx, w, r)
 	}
@@ -91,30 +101,18 @@ func (c *DNSChaos) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Ms
 	return plugin.NextOrFailure(c.Name(), c.Next, ctx, w, r)
 }
 
-// needChaos checks if chaos should be applied for the request
 func (c *DNSChaos) needChaos(podInfo *PodInfo, qname string) bool {
 	if podInfo == nil {
 		return false
 	}
 
-	if podInfo.Selector == nil {
+	if podInfo.Matcher == nil {
 		return true
 	}
 
-	rules := podInfo.Selector.Match(qname, "")
-	if len(rules) == 0 {
-		return false
-	}
-
-	match, ok := rules[0].(bool)
-	if !ok {
-		return false
-	}
-
-	return match
+	return podInfo.Matcher.Match(qname)
 }
 
-// applyChaos applies chaos to the DNS response
 func (c *DNSChaos) applyChaos(ctx context.Context, w dns.ResponseWriter, r *dns.Msg, state request.Request, podInfo *PodInfo) (int, error) {
 	if podInfo.Action == ActionError {
 		log.Infof("applying chaos error for pod %s/%s, qname: %s", podInfo.Namespace, podInfo.Name, state.QName())
@@ -133,10 +131,8 @@ func (c *DNSChaos) applyChaos(ctx context.Context, w dns.ResponseWriter, r *dns.
 		ip := getRandomIPv6()
 		log.Infof("applying chaos random IPv6 %v for pod %s/%s, qname: %s", ip, podInfo.Namespace, podInfo.Name, state.QName())
 		answers = aaaa(qname, 10, []net.IP{ip})
-	}
-
-	if len(answers) == 0 {
-		return dns.RcodeServerFailure, nil
+	default:
+		return plugin.NextOrFailure(c.Name(), c.Next, ctx, w, r)
 	}
 
 	m := new(dns.Msg)
@@ -166,7 +162,6 @@ func getRandomIPv6() net.IP {
 	return net.IP(ip)
 }
 
-// a creates A records
 func a(zone string, ttl uint32, ips []net.IP) []dns.RR {
 	answers := make([]dns.RR, len(ips))
 	for i, ip := range ips {
@@ -178,7 +173,6 @@ func a(zone string, ttl uint32, ips []net.IP) []dns.RR {
 	return answers
 }
 
-// aaaa creates AAAA records
 func aaaa(zone string, ttl uint32, ips []net.IP) []dns.RR {
 	answers := make([]dns.RR, len(ips))
 	for i, ip := range ips {
@@ -190,7 +184,6 @@ func aaaa(zone string, ttl uint32, ips []net.IP) []dns.RR {
 	return answers
 }
 
-// getClientConfig returns the kubernetes client config
 func (c *DNSChaos) getClientConfig() (*rest.Config, error) {
 	if c.kubeconfigPath != "" {
 		config := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
