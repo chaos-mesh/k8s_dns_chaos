@@ -50,6 +50,30 @@ The custom `cmd/coredns` binary registers `dns_chaos` immediately before the Cor
 
 Rules and the gRPC service survive CoreDNS reloads. A `grpcport` change keeps the old port open until the replacement DNS server starts. If replacement DNS startup fails, the old service remains available and the candidate port closes. All `dns_chaos` directives in one CoreDNS process must use the same configuration. Changes to Kubernetes client configuration, including changes inside the kubeconfig file, require a process restart.
 
+## Upgrade from `k8s_dns_chaos`
+
+Update the Corefile and RBAC together with the DNS server image:
+
+1. Replace the `k8s_dns_chaos` directive with the separate `dns_chaos` and `kubernetes` directives shown above. Move `grpcport` into `dns_chaos`. Keep `pods`, `fallthrough`, `ttl`, and other Kubernetes options in the `kubernetes` block.
+2. Preserve the existing listener address, port, Service target ports, and other Corefile directives. If the deployment listens on port `5353`, keep that port.
+3. Add this rule to the ClusterRole bound to the DNS deployment's ServiceAccount. Retain its existing permissions for services, pods, namespaces, and endpoints.
+
+```yaml
+rules:
+- apiGroups: ["discovery.k8s.io"]
+  resources: ["endpointslices"]
+  verbs: ["get", "list", "watch"]
+```
+
+The standard CoreDNS `kubernetes` plugin watches EndpointSlices. The old Chaos Mesh Helm chart's DNS role may lack these permissions. For an installation in `chaos-mesh` using the `chaos-dns-server` ServiceAccount, check the list permission with:
+
+```sh
+kubectl auth can-i list endpointslices.discovery.k8s.io \
+    --as=system:serviceaccount:chaos-mesh:chaos-dns-server
+```
+
+The command must return `yes`. Use your deployment's namespace and ServiceAccount name if they differ.
+
 ## Runtime Configuration via gRPC
 
 Chaos rules are configured at runtime via gRPC. The service keeps the `pb.DNS` name used by existing Chaos Mesh controllers. The interface is defined in [dns_chaos.proto](pb/dns_chaos.proto):
@@ -115,6 +139,24 @@ client.CancelDNSChaos(ctx, &pb.CancelDNSChaosRequest{
     Name: "my-chaos-rule",
 })
 ```
+
+## Tests
+
+Run unit tests, race checks, static analysis, and E2E compilation:
+
+```sh
+make check
+```
+
+To run the Kubernetes E2E suite, install Docker, Go, minikube, kubectl, and Helm, then run:
+
+```sh
+./e2e/e2e.sh
+```
+
+The script builds the current DNS image and installs Chaos Mesh `2.8.4` in a disposable minikube cluster. It runs the existing gRPC tests and creates real DNSChaos experiments to verify two target Pods, an unaffected control Pod, domain matching, and resolver restoration after deletion. Each target uses a distinct probe domain. The test DNS configuration disables caching so every assertion reaches the plugin.
+
+The script uses a private kubeconfig, collects failure diagnostics before teardown, and deletes its test cluster when it exits.
 
 ## Architecture
 

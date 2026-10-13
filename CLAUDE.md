@@ -19,11 +19,13 @@ make protoc
 
 Run `make check` for unit tests, race checks, E2E compilation, static analysis, and module consistency.
 
-E2E tests require a running Kubernetes cluster with chaos-coredns deployed. Tests use `kubectl exec` to run `nslookup` commands inside a test pod:
+Run `./e2e/e2e.sh` for the full E2E suite. Install Docker, minikube, kubectl, Helm, and Go first. The script creates a unique Docker-driver minikube profile with containerd and a private kubeconfig, then deletes that profile on exit.
 
-```bash
-cd e2e && go test -v ./...
-```
+The suite combines direct gRPC tests with real DNSChaos `error` and `random` experiments against Chaos Mesh chart `2.8.4`. The controller tests select two ClusterFirst Pods, check an unaffected control Pod, and verify resolver and DNS recovery after CR deletion. The E2E Corefile disables DNS caching so each query reaches the plugin.
+
+Set `E2E_ARTIFACT_DIR` to retain logs at a chosen path. The default is a temporary directory outside the repository. On failure, the script collects controller, daemon, and DNS logs before deleting its cluster.
+
+For a manually prepared cluster, install the same controller, daemon, and `e2e/manifests` fixtures before running `go test -v ./e2e/...`. Set `E2E_GRPC_ADDRESS` to the forwarded DNS gRPC endpoint. The default is `localhost:9288`.
 
 ## Architecture
 
