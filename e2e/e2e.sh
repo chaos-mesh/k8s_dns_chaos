@@ -83,7 +83,7 @@ kube apply -f "${SCRIPT_DIR}/manifests/chaos-coredns-service.yaml"
 kube --request-timeout=190s -n "$NAMESPACE" rollout status deployment/chaos-coredns --timeout=180s
 
 echo "==> Installing Chaos Mesh controller and daemon..."
-helm install chaos-mesh chaos-mesh --repo https://charts.chaos-mesh.org --version 2.8.4 \
+helm install chaos-mesh chaos-mesh --repo https://charts.chaos-mesh.org --version 2.8.5 \
     --namespace "$NAMESPACE" --wait --timeout 5m \
     --set dnsServer.create=false --set dnsServer.name=chaos-coredns \
     --set dashboard.create=false --set controllerManager.replicaCount=1 \

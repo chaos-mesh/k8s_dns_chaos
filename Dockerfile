@@ -1,8 +1,12 @@
-FROM golang:1.26.5 AS build-env
+# syntax=docker/dockerfile:1
+
+FROM golang:1.27.2 AS build-env
+ARG TARGETARCH
 WORKDIR /app
-ENV GOPROXY=https://goproxy.cn,direct
 COPY . .
-RUN go mod tidy && CGO_ENABLED=0 go build -o coredns ./cmd/coredns
+RUN --mount=type=cache,id=chaos-dns-go-mod,target=/go/pkg/mod \
+    --mount=type=cache,id=chaos-dns-go-build-${TARGETARCH},target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build -o coredns ./cmd/coredns
 
 FROM debian:stable-slim AS certs
 RUN apt-get update && apt-get -uy upgrade

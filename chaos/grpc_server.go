@@ -20,7 +20,6 @@ type grpcServerState struct {
 	listener net.Listener
 }
 
-// CreateGRPCServer creates and starts the gRPC server
 func (c *DNSChaos) CreateGRPCServer() error {
 	c.grpcState.mu.Lock()
 	defer c.grpcState.mu.Unlock()
@@ -81,7 +80,6 @@ func (c *DNSChaos) StopGRPCServer() error {
 	return nil
 }
 
-// SetDNSChaos sets chaos rules for pods
 func (c *chaosRuntime) SetDNSChaos(ctx context.Context, req *pb.SetDNSChaosRequest) (*pb.DNSChaosResponse, error) {
 	log.Infof("receive SetDNSChaos request %v", req)
 
@@ -176,7 +174,6 @@ func (c *chaosRuntime) SetDNSChaos(ctx context.Context, req *pb.SetDNSChaosReque
 	}, nil
 }
 
-// CancelDNSChaos removes chaos rules for pods
 func (c *chaosRuntime) CancelDNSChaos(ctx context.Context, req *pb.CancelDNSChaosRequest) (*pb.DNSChaosResponse, error) {
 	log.Infof("receive CancelDNSChaos request %v", req)
 	if req == nil || req.Name == "" {

@@ -22,13 +22,10 @@ const pluginName = "dns_chaos"
 var log = clog.NewWithPlugin(pluginName)
 
 const (
-	// ActionError means return error for DNS request
-	ActionError = "error"
-	// ActionRandom means return random IP for DNS request
+	ActionError  = "error"
 	ActionRandom = "random"
 )
 
-// PodInfo saves chaos information for a pod
 type PodInfo struct {
 	Namespace      string
 	Name           string
@@ -40,12 +37,10 @@ type PodInfo struct {
 	refreshMu      sync.Mutex
 }
 
-// IsOverdue checks if the pod info needs refresh
 func (p *PodInfo) IsOverdue() bool {
 	return time.Since(p.LastUpdateTime) > podRefreshInterval
 }
 
-// DNSChaos is the main plugin struct
 type DNSChaos struct {
 	Next plugin.Handler
 
@@ -67,7 +62,6 @@ type chaosRuntime struct {
 	ipPodMap map[string]*PodInfo
 }
 
-// New creates a new DNSChaos instance
 func New() *DNSChaos {
 	return &DNSChaos{
 		grpcPort:  9288,
@@ -80,10 +74,8 @@ func New() *DNSChaos {
 	}
 }
 
-// Name returns the plugin name
 func (c *DNSChaos) Name() string { return pluginName }
 
-// ServeDNS implements the plugin.Handler interface
 func (c *DNSChaos) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (int, error) {
 	state := request.Request{W: w, Req: r}
 	sourceIP := state.IP()

@@ -1,62 +1,77 @@
-# dns_chaos
+# k8s_dns_chaos
 
-A standalone CoreDNS plugin used to inject DNS chaos into a Kubernetes cluster. This is the DNS server component for Chaos Mesh's `DNSChaos`.
+`dns_chaos` is a standalone CoreDNS plugin that injects DNS faults for selected Kubernetes Pods. It provides the DNS server used by Chaos Mesh `DNSChaos`.
 
-## Description
+The plugin identifies target Pods by the request's source IP and applies rules received through gRPC. Requests without a matching fault continue to the standard CoreDNS `kubernetes` plugin or another plugin, such as `forward`. The server builds from [cmd/coredns](cmd/coredns) and registers `dns_chaos` immediately before `kubernetes`, independent of Corefile stanza order.
 
-This plugin intercepts DNS requests and applies chaos rules (error or random responses) to targeted pods. It works alongside the standard CoreDNS [kubernetes](https://coredns.io/plugins/kubernetes/) plugin.
+## Build the server image
 
-**Key features:**
+Use Docker with BuildKit to build CoreDNS with this plugin:
 
-- Standalone plugin that doesn't modify the kubernetes plugin
-- Sits in front of the kubernetes plugin in the CoreDNS plugin chain
-- Supports runtime configuration via gRPC
-- Pattern-based domain matching
-
-## Syntax
-
-```txt
-dns_chaos {
-    grpcport PORT
-    kubeconfig KUBECONFIG CONTEXT
-}
+```sh
+make image
 ```
 
-- `grpcport` **PORT** - Port for the gRPC service used for runtime chaos rule updates. Default is `9288`. The gRPC interface is defined in [dns_chaos.proto](pb/dns_chaos.proto).
+The image tag is `ghcr.io/chaos-mesh/chaos-coredns:latest`. The [Dockerfile](Dockerfile) builds the local `cmd/coredns` package. The image includes `/coredns` and CA certificates.
 
-- `kubeconfig` **KUBECONFIG** **CONTEXT** - Path to kubeconfig file and context name. If not specified, uses in-cluster config.
+To build an executable for your local operating system and architecture:
 
-## Corefile Configuration
+```sh
+make coredns
+```
 
-The custom `cmd/coredns` binary registers `dns_chaos` immediately before the CoreDNS `kubernetes` plugin, independent of the Corefile stanza order. Keep both directives in the same server block:
+Use `make help` to list build targets. The build toolchain and dependency versions are defined in [go.mod](go.mod) and [Dockerfile](Dockerfile).
+
+## Configure and run DNS
+
+The server needs access to the Kubernetes API. Both `dns_chaos` and `kubernetes` use in-cluster credentials by default. Grant access to Services, Pods, Namespaces, and `discovery.k8s.io` EndpointSlices. The [E2E RBAC manifest](e2e/manifests/chaos-coredns-rbac.yaml) provides a deployment example.
+
+For an in-cluster server, save this configuration as `Corefile`:
 
 ```txt
 .:53 {
-    dns_chaos {
-        grpcport 9288
-    }
-    kubernetes cluster.local in-addr.arpa ip6.arpa {
-        pods insecure
-        fallthrough in-addr.arpa ip6.arpa
-        ttl 30
-    }
-    forward . /etc/resolv.conf
-    cache 30
-    loop
-    reload
-    loadbalance
+	errors
+	ready
+	dns_chaos {
+		grpcport 9288
+	}
+	kubernetes cluster.local in-addr.arpa ip6.arpa {
+		pods insecure
+		fallthrough in-addr.arpa ip6.arpa
+		ttl 30
+	}
+	forward . /etc/resolv.conf
+	reload
 }
 ```
 
-Rules and the gRPC service survive CoreDNS reloads. A `grpcport` change keeps the old port open until the replacement DNS server starts. If replacement DNS startup fails, the old service remains available and the candidate port closes. All `dns_chaos` directives in one CoreDNS process must use the same configuration. Changes to Kubernetes client configuration, including changes inside the kubeconfig file, require a process restart.
+Mount the Corefile into the container and pass `-conf /etc/coredns/Corefile`. See the [E2E Deployment](e2e/manifests/chaos-coredns-deployment.yaml) and [Service](e2e/manifests/chaos-coredns-service.yaml) for DNS and gRPC ports.
 
-## Upgrade from `k8s_dns_chaos`
+For a server outside the cluster, add `kubeconfig /etc/kubernetes/config CONTEXT` inside both plugin blocks. Mount the kubeconfig and its referenced credential files. This example runs that configuration in Docker:
+
+```sh
+docker run --rm --name chaos-coredns \
+	-p 1053:53/udp -p 1053:53/tcp -p 127.0.0.1:9288:9288 \
+	-v "$PWD/Corefile:/etc/coredns/Corefile:ro" \
+	-v "$PWD/kubeconfig:/etc/kubernetes/config:ro" \
+	ghcr.io/chaos-mesh/chaos-coredns:latest \
+	-conf /etc/coredns/Corefile
+```
+
+The API address and credentials must work from inside the container. GCP kubeconfigs must use an external exec credential provider, such as `gke-gcloud-auth-plugin`. The old `auth-provider: gcp` configuration no longer works with the current client-go dependency. The scratch image does not include external credential executables.
+
+Target Pods must send their DNS queries to this server, and the server must see each Pod's source IP. A gRPC fault rule alone does not change a Pod's DNS configuration. The Chaos Mesh controller handles that redirection for `DNSChaos` experiments. The [direct gRPC test Pod](e2e/manifests/test-pod.yaml) uses `dnsPolicy: None` and points `dnsConfig.nameservers` to the chaos DNS Service.
+
+For fault validation, omit the CoreDNS `cache` plugin. It runs before `dns_chaos` and can return an earlier answer that hides rule changes. Client-side DNS caches can also retain answers.
+
+### Upgrade from the forked plugin
 
 Update the Corefile and RBAC together with the DNS server image:
 
-1. Replace the `k8s_dns_chaos` directive with the separate `dns_chaos` and `kubernetes` directives shown above. Move `grpcport` into `dns_chaos`. Keep `pods`, `fallthrough`, `ttl`, and other Kubernetes options in the `kubernetes` block.
-2. Preserve the existing listener address, port, Service target ports, and other Corefile directives. If the deployment listens on port `5353`, keep that port.
-3. Add this rule to the ClusterRole bound to the DNS deployment's ServiceAccount. Retain its existing permissions for services, pods, namespaces, and endpoints.
+1. Replace `k8s_dns_chaos` with separate `dns_chaos` and `kubernetes` directives as shown above. Move `grpcport` into `dns_chaos`. Keep supported Kubernetes options, such as `pods`, `fallthrough`, and `ttl`, in `kubernetes`.
+2. If you use `kubeconfig`, configure it in both plugin blocks. Remove static `chaos ACTION SCOPE` directives and configure faults through `DNSChaos` or gRPC patterns.
+3. Preserve the listener address, port, Service target ports, and other Corefile directives. If the deployment listens on port `5353`, keep that port.
+4. Add the following rule to the ClusterRole bound to the DNS deployment's ServiceAccount. Retain its existing permissions.
 
 ```yaml
 rules:
@@ -65,117 +80,105 @@ rules:
   verbs: ["get", "list", "watch"]
 ```
 
-The standard CoreDNS `kubernetes` plugin watches EndpointSlices. The old Chaos Mesh Helm chart's DNS role may lack these permissions. For an installation in `chaos-mesh` using the `chaos-dns-server` ServiceAccount, check the list permission with:
+The standard CoreDNS `kubernetes` plugin watches EndpointSlices. Existing Chaos Mesh DNS roles may lack these permissions. For an installation in `chaos-mesh` using the `chaos-dns-server` ServiceAccount, check the list permission with:
 
 ```sh
 kubectl auth can-i list endpointslices.discovery.k8s.io \
-    --as=system:serviceaccount:chaos-mesh:chaos-dns-server
+	--as=system:serviceaccount:chaos-mesh:chaos-dns-server
 ```
 
 The command must return `yes`. Use your deployment's namespace and ServiceAccount name if they differ.
 
-## Runtime Configuration via gRPC
+## Corefile reference
 
-Chaos rules are configured at runtime via gRPC. The service keeps the `pb.DNS` name used by existing Chaos Mesh controllers. The interface is defined in [dns_chaos.proto](pb/dns_chaos.proto):
+The parser in [chaos/setup.go](chaos/setup.go) accepts these options:
 
-```protobuf
-service DNS {
-    rpc SetDNSChaos(SetDNSChaosRequest) returns (DNSChaosResponse) {}
-    rpc CancelDNSChaos(CancelDNSChaosRequest) returns (DNSChaosResponse) {}
-}
-
-message SetDNSChaosRequest {
-    string name = 1;
-    repeated Pod pods = 2;
-    string action = 3;
-    repeated string patterns = 6;
+```txt
+dns_chaos {
+	grpcport PORT
+	kubeconfig KUBECONFIG CONTEXT
 }
 ```
 
-### Actions
+| Option | Behavior |
+| --- | --- |
+| `grpcport PORT` | Sets the gRPC TCP port from `1` through `65535`. The default is `9288`. The listener binds on all interfaces and uses plaintext gRPC. |
+| `kubeconfig KUBECONFIG CONTEXT` | Uses the specified kubeconfig file and context. Both arguments are required. Without this option, the plugin uses in-cluster credentials. |
 
-- `error` - Return DNS error (SERVFAIL) for matching requests
-- `random` - Return random IPv4 or IPv6 addresses for matching `A` or `AAAA` requests. Other record types continue to the next CoreDNS plugin.
+The separate [CoreDNS kubernetes plugin](https://coredns.io/plugins/kubernetes/) controls normal cluster DNS records and their visibility. `dns_chaos` has no static fault or scope directive.
 
-### Patterns
+Rules and the gRPC service survive CoreDNS reloads. A `grpcport` change keeps the old port open until the replacement DNS server starts. If replacement DNS startup fails, the old service remains available and the candidate port closes. All `dns_chaos` directives in one process must use the same configuration. Changes to Kubernetes client configuration, including changes inside the kubeconfig file, require a process restart.
 
-Domain patterns support wildcards:
+## Change faults through gRPC
 
-- `google.com` - Match exact domain
-- `chaos-mesh.*` - `*` matches zero or more characters and must be the last character
-- `github.?om` - `?` matches exactly one character
-- `db[12].example.com`, `db[1-3].example.com`, and `db[!9].example.com` - Match a character set, range, or excluded set
-- Omitted `patterns` (or an empty list) - Match all domains
+The [protobuf schema](pb/dns_chaos.proto) preserves the legacy `pb.DNS` service. The method paths are `/pb.DNS/SetDNSChaos` and `/pb.DNS/CancelDNSChaos`. Generated Go messages and clients are in [pb/](pb).
 
-The proto's legacy `scope` and `selector` fields are retained for wire compatibility but are not implemented by this standalone plugin. Requests that set either field are rejected with gRPC `InvalidArgument`.
+`SetDNSChaos` accepts a rule name, an action, target Pods, and optional domain patterns. Each target Pod must have an assigned IP address. The actions are:
 
-Each pod can belong to one active rule. Setting an existing rule name adds or updates the supplied pod targets. Canceling the rule removes every pod added under that name. A target pod must have an assigned IP address before a rule can be created.
+- `error` returns DNS `SERVFAIL` for matching queries.
+- `random` returns a random IPv4 address for an A query or a random IPv6 address for an AAAA query. Other query types continue to the next CoreDNS plugin. Synthetic answers have a TTL of 10 seconds.
 
-## Example
+An empty `patterns` list affects all queried names. Patterns are case-insensitive, and trailing dots are ignored. Supported patterns include exact names, a final `*` for zero or more characters, `?` for one character, and character classes such as `[12]`, `[1-3]`, and `[!9]`. A `*` anywhere except the final position is rejected, including `*.example.com`. The legacy `scope` and `selector` fields remain in the schema for wire compatibility. Non-empty values are rejected with gRPC `InvalidArgument`.
 
-Set chaos rule to return errors for all DNS requests from pod `busybox-0` in namespace `busybox`:
+For example, send this request through `pb.NewDNSClient(conn).SetDNSChaos`:
 
 ```go
-client.SetDNSChaos(ctx, &pb.SetDNSChaosRequest{
-    Name:   "my-chaos-rule",
-    Action: "error",
-    Pods: []*pb.Pod{
-        {Namespace: "busybox", Name: "busybox-0"},
-    },
-})
+&pb.SetDNSChaosRequest{
+	Name:     "example-fault",
+	Action:   "error",
+	Pods:     []*pb.Pod{{Namespace: "busybox", Name: "busybox-0"}},
+	Patterns: []string{"example.com", "chaos-test.local*"},
+}
 ```
 
-The shell command below will fail:
+Each Pod can belong to one active rule. Setting an existing rule name adds or updates the supplied Pod targets and preserves the other targets under that name. A Pod targeted by another rule, or an IP already assigned to another target, causes `AlreadyExists`.
+
+Call `CancelDNSChaos` with `&pb.CancelDNSChaosRequest{Name: "example-fault"}` to remove every target under that rule. Cancelling an unknown name succeeds.
+
+Rules exist in memory and do not survive a process restart. The [gRPC tests](chaos/grpc_server_test.go) exercise both legacy method paths, target accumulation, conflicts, and cancellation with a fake Kubernetes client. The [reload tests](chaos/reload_test.go) exercise successful and failed reloads and gRPC port changes.
+
+## Develop and test
+
+Use the Go version declared in [go.mod](go.mod). Check the active shared cache locations before installing tools or building:
 
 ```sh
-kubectl exec busybox-0 -it -n busybox -- ping -c 1 google.com
-# Output: ping: bad address 'google.com'
+go env GOCACHE GOMODCACHE GOPATH
 ```
 
-To cancel the chaos:
+Reuse those caches across branches and worktrees. The Dockerfile also uses shared BuildKit cache mounts for module downloads and Go builds.
 
-```go
-client.CancelDNSChaos(ctx, &pb.CancelDNSChaosRequest{
-    Name: "my-chaos-rule",
-})
-```
-
-## Tests
-
-Run unit tests, race checks, static analysis, and E2E compilation:
+Run the checks used by [CI](.github/workflows/e2e-tests.yaml):
 
 ```sh
 make check
 ```
 
-To run the Kubernetes E2E suite, install Docker, Go, minikube, kubectl, and Helm, then run:
+This target runs unit and race tests, compiles the E2E tests, runs `go vet`, and checks module consistency. The unit tests cover fault responses, patterns, Pod IP refresh, the gRPC contract, and CoreDNS reload behavior. E2E compilation does not execute cluster tests.
+
+### Regenerate protobuf code
+
+Install `protoc` through your system package manager, then run:
+
+```sh
+make protoc
+```
+
+The Makefile resolves `protoc-gen-go` and `protoc-gen-go-grpc` with `go tool -n`. Their versions are locked by the root module's `tool` declarations and dependency graph. Commit schema changes together with the generated files in `pb/`, and preserve the `pb.DNS` service and existing field numbers for client compatibility.
+
+### Run the cluster E2E suite
+
+The suite requires Bash, Go, Docker with BuildKit, minikube, kubectl, Helm, and access to the image registries and build dependencies.
 
 ```sh
 ./e2e/e2e.sh
 ```
 
-The script builds the current DNS image and installs Chaos Mesh `2.8.4` in a disposable minikube cluster. It runs the existing gRPC tests and creates real DNSChaos experiments to verify two target Pods, an unaffected control Pod, domain matching, and resolver restoration after deletion. Each target uses a distinct probe domain. The test DNS configuration disables caching so every assertion reaches the plugin.
+The script builds the `e2e-test` image and creates a unique Docker-driver minikube profile with containerd and a private kubeconfig. It uses a dynamically assigned local gRPC port and deletes its own profile on exit.
 
-The script uses a private kubeconfig, collects failure diagnostics before teardown, and deletes its test cluster when it exits.
+The suite installs Chaos Mesh `2.8.5`, runs direct gRPC tests, and creates real `DNSChaos` `error` and `random` experiments. The controller tests verify two target Pods, an unaffected control Pod, domain matching, and resolver and DNS recovery after CR deletion. Each target uses a distinct probe domain. The E2E Corefile disables DNS caching so every query reaches the plugin.
 
-## Architecture
+Set `E2E_ARTIFACT_DIR` to retain logs at a chosen path. The default is a temporary directory outside the repository. On failure, the script collects controller, daemon, and DNS logs before deleting its cluster.
 
-```
-DNS Request
-    │
-    ▼
-┌─────────────┐
-│  dns_chaos  │ ─── Check if source pod has chaos rules
-└─────────────┘
-    │
-    │ (if chaos) ──► Return error/random response
-    │
-    │ (if no chaos)
-    ▼
-┌─────────────┐
-│ kubernetes  │ ─── Normal DNS resolution
-└─────────────┘
-    │
-    ▼
-DNS Response
-```
+## License
+
+[Apache License 2.0](LICENSE).

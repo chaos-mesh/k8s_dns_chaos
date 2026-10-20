@@ -8,21 +8,19 @@ on:
 
 jobs:
   e2e:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7.0.0
         with:
-          go-version: '1.26.5'
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
 
-      - name: Run unit tests
-        run: go test -race -count=1 ./chaos ./cmd/coredns
-
-      - name: Run static analysis
-        run: go vet ./chaos ./cmd/coredns
+      - name: Run Go checks
+        run: make check
 
       - name: Install minikube
         run: |
@@ -31,9 +29,9 @@ jobs:
           rm minikube-linux-amd64
 
       - name: Install Helm
-        uses: azure/setup-helm@v5
+        uses: azure/setup-helm@v5.0.1
         with:
-          version: v3.18.4
+          version: v4.3.1
 
       - name: Run E2E tests
         env:
@@ -42,7 +40,7 @@ jobs:
 
       - name: Upload E2E diagnostics
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: dns-e2e-diagnostics
           path: ${{ runner.temp }}/dns-e2e-artifacts
