@@ -1,22 +1,20 @@
 package main
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/coredns/coredns/core/dnsserver"
 )
 
-func TestDNSChaosPrecedesKubernetes(t *testing.T) {
-	for index, directive := range dnsserver.Directives {
-		if directive != "dns_chaos" {
-			continue
-		}
-
-		if index+1 >= len(dnsserver.Directives) || dnsserver.Directives[index+1] != "kubernetes" {
-			t.Fatal("dns_chaos must immediately precede kubernetes")
-		}
-		return
+func TestDNSChaosPrecedesCacheAndKubernetes(t *testing.T) {
+	chaosIndex := slices.Index(dnsserver.Directives, "dns_chaos")
+	cacheIndex := slices.Index(dnsserver.Directives, "cache")
+	kubernetesIndex := slices.Index(dnsserver.Directives, "kubernetes")
+	if chaosIndex < 0 || cacheIndex != chaosIndex+1 {
+		t.Fatal("dns_chaos must immediately precede cache")
 	}
-
-	t.Fatal("dns_chaos directive is not registered")
+	if kubernetesIndex <= cacheIndex {
+		t.Fatal("dns_chaos and cache must precede kubernetes")
+	}
 }

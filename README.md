@@ -2,7 +2,7 @@
 
 `dns_chaos` is a standalone CoreDNS plugin that injects DNS faults for selected Kubernetes Pods. It provides the DNS server used by Chaos Mesh `DNSChaos`.
 
-The plugin identifies target Pods by the request's source IP and applies rules received through gRPC. Requests without a matching fault continue to the standard CoreDNS `kubernetes` plugin or another plugin, such as `forward`. The server builds from [cmd/coredns](cmd/coredns) and registers `dns_chaos` immediately before `kubernetes`, independent of Corefile stanza order.
+The plugin identifies target Pods by the request's source IP and applies rules received through gRPC. Requests without a matching fault continue to the standard CoreDNS `kubernetes` plugin or another plugin, such as `forward`. The server builds from [cmd/coredns](cmd/coredns) and registers `dns_chaos` immediately before `cache`, ahead of `kubernetes`, independent of Corefile stanza order.
 
 ## Build the server image
 
@@ -62,7 +62,7 @@ The API address and credentials must work from inside the container. GCP kubecon
 
 Target Pods must send their DNS queries to this server, and the server must see each Pod's source IP. A gRPC fault rule alone does not change a Pod's DNS configuration. The Chaos Mesh controller handles that redirection for `DNSChaos` experiments. The [direct gRPC test Pod](e2e/manifests/test-pod.yaml) uses `dnsPolicy: None` and points `dnsConfig.nameservers` to the chaos DNS Service.
 
-For fault validation, omit the CoreDNS `cache` plugin. It runs before `dns_chaos` and can return an earlier answer that hides rule changes. Client-side DNS caches can also retain answers.
+The CoreDNS `cache` plugin can remain enabled. Fault responses bypass it, so cached normal answers cannot hide rule changes and injected answers cannot reach other Pods through the shared cache. Requests without a matching fault still use the normal DNS cache. Client-side DNS caches can retain answers until their TTL expires.
 
 ### Upgrade from the forked plugin
 

@@ -11,7 +11,7 @@ import (
 func init() {
 	directives := make([]string, 0, len(dnsserver.Directives)+1)
 	for _, directive := range dnsserver.Directives {
-		if directive == "kubernetes" {
+		if directive == "cache" {
 			directives = append(directives, "dns_chaos")
 		}
 		directives = append(directives, directive)
