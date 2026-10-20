@@ -1,0 +1,98 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: target-a
+  namespace: chaos-dns-e2e
+  labels:
+    e2e: dns-controller
+    role: target
+spec:
+  dnsPolicy: ClusterFirst
+  containers:
+  - name: client
+    image: busybox:1.38.0
+    command: ["sleep", "3600"]
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: target-b
+  namespace: chaos-dns-e2e
+  labels:
+    e2e: dns-controller
+    role: target
+spec:
+  dnsPolicy: ClusterFirst
+  containers:
+  - name: client
+    image: busybox:1.38.0
+    command: ["sleep", "3600"]
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: control
+  namespace: chaos-dns-e2e
+  labels:
+    e2e: dns-controller
+    role: control
+spec:
+  dnsPolicy: ClusterFirst
+  containers:
+  - name: client
+    image: busybox:1.38.0
+    command: ["sleep", "3600"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: error-target-a
+  namespace: chaos-dns-e2e
+spec:
+  ports:
+  - port: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: error-target-b
+  namespace: chaos-dns-e2e
+spec:
+  ports:
+  - port: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: error-control
+  namespace: chaos-dns-e2e
+spec:
+  ports:
+  - port: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: random-target-a
+  namespace: chaos-dns-e2e
+spec:
+  ports:
+  - port: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: random-target-b
+  namespace: chaos-dns-e2e
+spec:
+  ports:
+  - port: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: random-control
+  namespace: chaos-dns-e2e
+spec:
+  ports:
+  - port: 80

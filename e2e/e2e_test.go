@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
@@ -15,7 +16,11 @@ import (
 const grpcAddress = "localhost:9288"
 
 func getGRPCClient(t *testing.T) (pb.DNSClient, *grpc.ClientConn) {
-	conn, err := grpc.Dial(grpcAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	address := os.Getenv("E2E_GRPC_ADDRESS")
+	if address == "" {
+		address = grpcAddress
+	}
+	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	require.NoError(t, err, "Failed to connect to gRPC server")
 	return pb.NewDNSClient(conn), conn
 }

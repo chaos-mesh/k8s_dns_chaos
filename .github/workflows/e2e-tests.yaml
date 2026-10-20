@@ -17,18 +17,10 @@ jobs:
         uses: actions/setup-go@v7.0.0
         with:
           go-version-file: go.mod
-          cache-dependency-path: |
-            go.sum
-            e2e/go.sum
+          cache-dependency-path: go.sum
 
       - name: Run Go checks
-        run: |
-          go test -race -count=1 ./...
-          go vet ./...
-          go mod tidy -diff
-          go -C e2e test -run '^$' ./...
-          go -C e2e vet ./...
-          go -C e2e mod tidy -diff
+        run: make check
 
       - name: Install minikube
         run: |
@@ -36,15 +28,20 @@ jobs:
           sudo install minikube-linux-amd64 /usr/local/bin/minikube
           rm minikube-linux-amd64
 
+      - name: Install Helm
+        uses: azure/setup-helm@v5.0.1
+        with:
+          version: v4.3.1
+
       - name: Run E2E tests
+        env:
+          E2E_ARTIFACT_DIR: ${{ runner.temp }}/dns-e2e-artifacts
         run: ./e2e/e2e.sh
 
-      - name: Collect logs on failure
+      - name: Upload E2E diagnostics
         if: failure()
-        run: |
-          echo "=== Chaos CoreDNS Logs ==="
-          kubectl -n chaos-dns-e2e logs -l app=chaos-coredns --tail=200 || true
-          echo "=== Test Pod Status ==="
-          kubectl -n chaos-dns-e2e describe pod test-client || true
-          echo "=== All Pods ==="
-          kubectl -n chaos-dns-e2e get pods -o wide || true
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: dns-e2e-diagnostics
+          path: ${{ runner.temp }}/dns-e2e-artifacts
+          if-no-files-found: ignore

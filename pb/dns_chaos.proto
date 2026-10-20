@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package pb;
+option go_package = "github.com/chaos-mesh/k8s_dns_chaos/pb";
+
+service DNS {
+  rpc SetDNSChaos(SetDNSChaosRequest) returns (DNSChaosResponse) {}
+  rpc CancelDNSChaos(CancelDNSChaosRequest) returns (DNSChaosResponse) {}
+}
+
+message SetDNSChaosRequest {
+  string name = 1;
+  repeated Pod pods = 2;
+  
+  // action means the chaos action, values can be "random" or "error"
+  //   "random": return random IP for DNS request
+  //   "error":  return error for DNS request
+  string action = 3;
+
+  // Retained for wire compatibility. This standalone plugin rejects non-empty values.
+  string scope = 4;
+
+  // Retained for wire compatibility. This standalone plugin rejects non-empty values.
+  string selector = 5;
+  repeated string patterns = 6;
+}
+
+message Pod {
+  string namespace = 1;
+  string name = 2;
+}
+
+message CancelDNSChaosRequest {
+  string name = 1;
+}
+
+message DNSChaosResponse {
+  bool result = 1;
+  string msg = 2;
+}
