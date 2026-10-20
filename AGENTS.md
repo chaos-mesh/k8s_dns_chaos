@@ -38,6 +38,10 @@ The E2E suite requires Docker, minikube, kubectl, Helm, and Go. It installs Chao
 
 Remove only temporary artifacts, containers, and mounts created by the task after confirming they are unused. Do not clear shared caches, remove unrelated source or backups, or run global Docker prune.
 
+## Changelog and release notes
+
+Keep `CHANGELOG.md` and GitHub release notes focused on core changes since the previous release. Include major features, important behavior fixes, and upgrade compatibility requirements. Group related fixes into concise entries. Omit routine tests, generated code updates, internal file moves, and exhaustive dependency lists. Mention dependency versions only when they affect compatibility or represent a core upgrade. Put detailed behavior and migration steps in README and link to them. Release notes must match the corresponding changelog entry.
+
 ## Contributions
 
 Keep README examples consistent with the parser and runtime. Use signed-off commits, following the repository's `Signed-off-by` convention. Do not publish images, push changes, or mutate external services unless the task authorizes that action.
