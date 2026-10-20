@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM golang:1.27.2 AS build-env
+FROM golang:1.27.3 AS build-env
 ARG TARGETARCH
 WORKDIR /app
 COPY . .

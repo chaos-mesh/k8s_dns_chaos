@@ -7,6 +7,10 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Changed
+
+- Require Go 1.27.3.
+
 ## [0.3.0] - 2026-10-20
 
 ### Added
