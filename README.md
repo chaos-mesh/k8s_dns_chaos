@@ -187,7 +187,7 @@ The suite requires Bash, Go, Docker with BuildKit, minikube, kubectl, Helm, and 
 
 The script builds the `e2e-test` image and creates a unique Docker-driver minikube profile with containerd and a private kubeconfig. It uses a dynamically assigned local gRPC port and deletes its own profile on exit.
 
-The suite installs Chaos Mesh `2.8.5`, runs direct gRPC tests, and creates real `DNSChaos` `error` and `random` experiments. The controller tests verify two target Pods, an unaffected control Pod, domain matching, and resolver and DNS recovery after CR deletion. Each target uses a distinct probe domain. The E2E Corefile disables DNS caching so every query reaches the plugin.
+The suite installs Chaos Mesh `2.8.5`, runs direct gRPC tests, and creates real `DNSChaos` `error` and `random` experiments. The controller tests verify two target Pods, an unaffected control Pod, domain matching, and resolver and DNS recovery after CR deletion. Each target uses a distinct probe domain. The E2E Corefile enables DNS caching to verify that fault rules work alongside cached normal answers.
 
 Set `E2E_ARTIFACT_DIR` to retain logs at a chosen path. The default is a temporary directory outside the repository. On failure, the script collects controller, daemon, and DNS logs before deleting its cluster.
 
