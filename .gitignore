@@ -15,4 +15,4 @@
 # vendor/
 
 # binary artifact
-coredns
+/coredns
