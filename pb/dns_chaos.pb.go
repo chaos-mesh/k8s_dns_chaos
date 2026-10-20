@@ -25,15 +25,17 @@ type SetDNSChaosRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Name  string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Pods  []*Pod                 `protobuf:"bytes,2,rep,name=pods,proto3" json:"pods,omitempty"`
-	// action means the chaos action, values can be "random" or "error"
+	// action means the chaos action, values can be "random", "error", or "static"
 	//   "random": return random IP for DNS request
 	//   "error":  return error for DNS request
+	//   "static": return the configured IP for an exact domain name
 	Action string `protobuf:"bytes,3,opt,name=action,proto3" json:"action,omitempty"`
 	// Retained for wire compatibility. This standalone plugin rejects non-empty values.
 	Scope string `protobuf:"bytes,4,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Retained for wire compatibility. This standalone plugin rejects non-empty values.
-	Selector      string   `protobuf:"bytes,5,opt,name=selector,proto3" json:"selector,omitempty"`
-	Patterns      []string `protobuf:"bytes,6,rep,name=patterns,proto3" json:"patterns,omitempty"`
+	Selector      string         `protobuf:"bytes,5,opt,name=selector,proto3" json:"selector,omitempty"`
+	Patterns      []string       `protobuf:"bytes,6,rep,name=patterns,proto3" json:"patterns,omitempty"`
+	IpDomainMaps  []*IpDomainMap `protobuf:"bytes,7,rep,name=ipDomainMaps,proto3" json:"ipDomainMaps,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -106,6 +108,13 @@ func (x *SetDNSChaosRequest) GetSelector() string {
 func (x *SetDNSChaosRequest) GetPatterns() []string {
 	if x != nil {
 		return x.Patterns
+	}
+	return nil
+}
+
+func (x *SetDNSChaosRequest) GetIpDomainMaps() []*IpDomainMap {
+	if x != nil {
+		return x.IpDomainMaps
 	}
 	return nil
 }
@@ -258,18 +267,71 @@ func (x *DNSChaosResponse) GetMsg() string {
 	return ""
 }
 
+type IpDomainMap struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ip            string                 `protobuf:"bytes,1,opt,name=ip,proto3" json:"ip,omitempty"`
+	Domain        string                 `protobuf:"bytes,2,opt,name=domain,proto3" json:"domain,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *IpDomainMap) Reset() {
+	*x = IpDomainMap{}
+	mi := &file_dns_chaos_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *IpDomainMap) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*IpDomainMap) ProtoMessage() {}
+
+func (x *IpDomainMap) ProtoReflect() protoreflect.Message {
+	mi := &file_dns_chaos_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use IpDomainMap.ProtoReflect.Descriptor instead.
+func (*IpDomainMap) Descriptor() ([]byte, []int) {
+	return file_dns_chaos_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *IpDomainMap) GetIp() string {
+	if x != nil {
+		return x.Ip
+	}
+	return ""
+}
+
+func (x *IpDomainMap) GetDomain() string {
+	if x != nil {
+		return x.Domain
+	}
+	return ""
+}
+
 var File_dns_chaos_proto protoreflect.FileDescriptor
 
 const file_dns_chaos_proto_rawDesc = "" +
 	"\n" +
-	"\x0fdns_chaos.proto\x12\x02pb\"\xab\x01\n" +
+	"\x0fdns_chaos.proto\x12\x02pb\"\xe0\x01\n" +
 	"\x12SetDNSChaosRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1b\n" +
 	"\x04pods\x18\x02 \x03(\v2\a.pb.PodR\x04pods\x12\x16\n" +
 	"\x06action\x18\x03 \x01(\tR\x06action\x12\x14\n" +
 	"\x05scope\x18\x04 \x01(\tR\x05scope\x12\x1a\n" +
 	"\bselector\x18\x05 \x01(\tR\bselector\x12\x1a\n" +
-	"\bpatterns\x18\x06 \x03(\tR\bpatterns\"7\n" +
+	"\bpatterns\x18\x06 \x03(\tR\bpatterns\x123\n" +
+	"\fipDomainMaps\x18\a \x03(\v2\x0f.pb.IpDomainMapR\fipDomainMaps\"7\n" +
 	"\x03Pod\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\"+\n" +
@@ -277,7 +339,10 @@ const file_dns_chaos_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"<\n" +
 	"\x10DNSChaosResponse\x12\x16\n" +
 	"\x06result\x18\x01 \x01(\bR\x06result\x12\x10\n" +
-	"\x03msg\x18\x02 \x01(\tR\x03msg2\x89\x01\n" +
+	"\x03msg\x18\x02 \x01(\tR\x03msg\"5\n" +
+	"\vIpDomainMap\x12\x0e\n" +
+	"\x02ip\x18\x01 \x01(\tR\x02ip\x12\x16\n" +
+	"\x06domain\x18\x02 \x01(\tR\x06domain2\x89\x01\n" +
 	"\x03DNS\x12=\n" +
 	"\vSetDNSChaos\x12\x16.pb.SetDNSChaosRequest\x1a\x14.pb.DNSChaosResponse\"\x00\x12C\n" +
 	"\x0eCancelDNSChaos\x12\x19.pb.CancelDNSChaosRequest\x1a\x14.pb.DNSChaosResponse\"\x00B(Z&github.com/chaos-mesh/k8s_dns_chaos/pbb\x06proto3"
@@ -294,24 +359,26 @@ func file_dns_chaos_proto_rawDescGZIP() []byte {
 	return file_dns_chaos_proto_rawDescData
 }
 
-var file_dns_chaos_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_dns_chaos_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_dns_chaos_proto_goTypes = []any{
 	(*SetDNSChaosRequest)(nil),    // 0: pb.SetDNSChaosRequest
 	(*Pod)(nil),                   // 1: pb.Pod
 	(*CancelDNSChaosRequest)(nil), // 2: pb.CancelDNSChaosRequest
 	(*DNSChaosResponse)(nil),      // 3: pb.DNSChaosResponse
+	(*IpDomainMap)(nil),           // 4: pb.IpDomainMap
 }
 var file_dns_chaos_proto_depIdxs = []int32{
 	1, // 0: pb.SetDNSChaosRequest.pods:type_name -> pb.Pod
-	0, // 1: pb.DNS.SetDNSChaos:input_type -> pb.SetDNSChaosRequest
-	2, // 2: pb.DNS.CancelDNSChaos:input_type -> pb.CancelDNSChaosRequest
-	3, // 3: pb.DNS.SetDNSChaos:output_type -> pb.DNSChaosResponse
-	3, // 4: pb.DNS.CancelDNSChaos:output_type -> pb.DNSChaosResponse
-	3, // [3:5] is the sub-list for method output_type
-	1, // [1:3] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	4, // 1: pb.SetDNSChaosRequest.ipDomainMaps:type_name -> pb.IpDomainMap
+	0, // 2: pb.DNS.SetDNSChaos:input_type -> pb.SetDNSChaosRequest
+	2, // 3: pb.DNS.CancelDNSChaos:input_type -> pb.CancelDNSChaosRequest
+	3, // 4: pb.DNS.SetDNSChaos:output_type -> pb.DNSChaosResponse
+	3, // 5: pb.DNS.CancelDNSChaos:output_type -> pb.DNSChaosResponse
+	4, // [4:6] is the sub-list for method output_type
+	2, // [2:4] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_dns_chaos_proto_init() }
@@ -325,7 +392,7 @@ func file_dns_chaos_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dns_chaos_proto_rawDesc), len(file_dns_chaos_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

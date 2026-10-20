@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"net/netip"
 	"sync"
 	"time"
 
@@ -24,6 +25,7 @@ var log = clog.NewWithPlugin(pluginName)
 const (
 	ActionError  = "error"
 	ActionRandom = "random"
+	ActionStatic = "static"
 )
 
 type PodInfo struct {
@@ -32,6 +34,7 @@ type PodInfo struct {
 	RuleName       string
 	Action         string
 	Matcher        *domainMatcher
+	staticIPs      map[string]netip.Addr
 	IP             string
 	LastUpdateTime time.Time
 	refreshMu      sync.Mutex
@@ -114,17 +117,25 @@ func (c *DNSChaos) applyChaos(ctx context.Context, w dns.ResponseWriter, r *dns.
 	answers := []dns.RR{}
 	qname := state.Name()
 
-	switch state.QType() {
-	case dns.TypeA:
-		ip := getRandomIPv4()
-		log.Infof("applying chaos random IPv4 %v for pod %s/%s, qname: %s", ip, podInfo.Namespace, podInfo.Name, state.QName())
-		answers = a(qname, 10, []net.IP{ip})
-	case dns.TypeAAAA:
-		ip := getRandomIPv6()
-		log.Infof("applying chaos random IPv6 %v for pod %s/%s, qname: %s", ip, podInfo.Namespace, podInfo.Name, state.QName())
-		answers = aaaa(qname, 10, []net.IP{ip})
-	default:
-		return plugin.NextOrFailure(c.Name(), c.Next, ctx, w, r)
+	if podInfo.Action == ActionStatic {
+		var handled bool
+		answers, handled = staticAnswers(podInfo.staticIPs, state.QName(), state.QType())
+		if !handled {
+			return plugin.NextOrFailure(c.Name(), c.Next, ctx, w, r)
+		}
+	} else {
+		switch state.QType() {
+		case dns.TypeA:
+			ip := getRandomIPv4()
+			log.Infof("applying chaos random IPv4 %v for pod %s/%s, qname: %s", ip, podInfo.Namespace, podInfo.Name, state.QName())
+			answers = a(qname, 10, []net.IP{ip})
+		case dns.TypeAAAA:
+			ip := getRandomIPv6()
+			log.Infof("applying chaos random IPv6 %v for pod %s/%s, qname: %s", ip, podInfo.Namespace, podInfo.Name, state.QName())
+			answers = aaaa(qname, 10, []net.IP{ip})
+		default:
+			return plugin.NextOrFailure(c.Name(), c.Next, ctx, w, r)
+		}
 	}
 
 	m := new(dns.Msg)

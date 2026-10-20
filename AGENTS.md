@@ -1,6 +1,6 @@
 # Repository guide
 
-This repository builds the standalone `dns_chaos` CoreDNS plugin used by Chaos Mesh DNSChaos. `cmd/coredns` registers it immediately before the standard CoreDNS `kubernetes` plugin. The root module includes both the plugin and E2E tests.
+This repository builds the standalone `dns_chaos` CoreDNS plugin used by Chaos Mesh DNSChaos. `cmd/coredns` registers it immediately before `cache`, ahead of the standard CoreDNS `kubernetes` plugin. Fault responses bypass the shared cache. Unmatched requests retain normal caching. The root module includes both the plugin and E2E tests.
 
 ## Code map
 
@@ -10,7 +10,7 @@ This repository builds the standalone `dns_chaos` CoreDNS plugin used by Chaos M
 - `chaos/domain_matcher.go` matches normalized domain patterns. `chaos/pod_tracker.go` refreshes target Pod IPs.
 - `chaos/lifecycle.go` shares the runtime and gRPC listener across CoreDNS reloads. `chaos/reload_test.go` covers reload success, rollback, and port changes.
 - `pb/dns_chaos.proto` owns the gRPC contract. The `.pb.go` files in `pb/` are generated.
-- `chaos/*_test.go` uses fake Kubernetes clients and real local DNS or gRPC listeners. `cmd/coredns/main_test.go` verifies plugin ordering.
+- `chaos/*_test.go` uses fake Kubernetes clients and real local DNS or gRPC listeners. `cmd/coredns` tests verify plugin ordering and cache isolation through the registered handlers.
 - `e2e/` contains direct gRPC tests and real Chaos Mesh controller tests. `e2e/manifests/` provides the DNS deployment and client fixtures.
 - `Dockerfile` builds `cmd/coredns` directly. `Makefile` owns local builds, checks, and protobuf generation. `.github/workflows/` defines checks and image publication.
 

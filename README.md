@@ -2,7 +2,7 @@
 
 `dns_chaos` is a standalone CoreDNS plugin that injects DNS faults for selected Kubernetes Pods. It provides the DNS server used by Chaos Mesh `DNSChaos`.
 
-The plugin identifies target Pods by the request's source IP and applies rules received through gRPC. Requests without a matching fault continue to the standard CoreDNS `kubernetes` plugin or another plugin, such as `forward`. The server builds from [cmd/coredns](cmd/coredns) and registers `dns_chaos` immediately before `kubernetes`, independent of Corefile stanza order.
+The plugin identifies target Pods by the request's source IP and applies rules received through gRPC. Requests without a matching fault continue to the standard CoreDNS `kubernetes` plugin or another plugin, such as `forward`. The server builds from [cmd/coredns](cmd/coredns) and registers `dns_chaos` immediately before `cache`, ahead of `kubernetes`, independent of Corefile stanza order.
 
 ## Build the server image
 
@@ -62,7 +62,7 @@ The API address and credentials must work from inside the container. GCP kubecon
 
 Target Pods must send their DNS queries to this server, and the server must see each Pod's source IP. A gRPC fault rule alone does not change a Pod's DNS configuration. The Chaos Mesh controller handles that redirection for `DNSChaos` experiments. The [direct gRPC test Pod](e2e/manifests/test-pod.yaml) uses `dnsPolicy: None` and points `dnsConfig.nameservers` to the chaos DNS Service.
 
-For fault validation, omit the CoreDNS `cache` plugin. It runs before `dns_chaos` and can return an earlier answer that hides rule changes. Client-side DNS caches can also retain answers.
+The CoreDNS `cache` plugin can remain enabled. Fault responses bypass it, so cached normal answers cannot hide rule changes and injected answers cannot reach other Pods through the shared cache. Requests without a matching fault still use the normal DNS cache. Client-side DNS caches can retain answers until their TTL expires.
 
 ### Upgrade from the forked plugin
 
@@ -116,6 +116,7 @@ The [protobuf schema](pb/dns_chaos.proto) preserves the legacy `pb.DNS` service.
 `SetDNSChaos` accepts a rule name, an action, target Pods, and optional domain patterns. Each target Pod must have an assigned IP address. The actions are:
 
 - `error` returns DNS `SERVFAIL` for matching queries.
+- `static` returns the configured IP for an exact domain name. Each `ipDomainMaps` entry contains `domain` and `ip`. Names are case-insensitive and allow a trailing dot. A matching A or AAAA query receives the mapped address with TTL 10. A query for the other address family succeeds with no answers. Unmapped names and other query types continue to the next plugin.
 - `random` returns a random IPv4 address for an A query or a random IPv6 address for an AAAA query. Other query types continue to the next CoreDNS plugin. Synthetic answers have a TTL of 10 seconds.
 
 An empty `patterns` list affects all queried names. Patterns are case-insensitive, and trailing dots are ignored. Supported patterns include exact names, a final `*` for zero or more characters, `?` for one character, and character classes such as `[12]`, `[1-3]`, and `[!9]`. A `*` anywhere except the final position is rejected, including `*.example.com`. The legacy `scope` and `selector` fields remain in the schema for wire compatibility. Non-empty values are rejected with gRPC `InvalidArgument`.
@@ -130,6 +131,17 @@ For example, send this request through `pb.NewDNSClient(conn).SetDNSChaos`:
 	Patterns: []string{"example.com", "chaos-test.local*"},
 }
 ```
+
+For a static rule, set `Action: "static"` and include mappings:
+
+```go
+IpDomainMaps: []*pb.IpDomainMap{
+	{Domain: "example.com", Ip: "192.0.2.10"},
+	{Domain: "ipv6.example.com", Ip: "2001:db8::10"},
+},
+```
+
+Static rules require at least one mapping. Each name maps to one IP address. Invalid domain names, invalid IPs, and duplicate names are rejected before changing the rule. Optional `patterns` further restrict the mapped names that take effect.
 
 Each Pod can belong to one active rule. Setting an existing rule name adds or updates the supplied Pod targets and preserves the other targets under that name. A Pod targeted by another rule, or an IP already assigned to another target, causes `AlreadyExists`.
 

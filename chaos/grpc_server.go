@@ -87,6 +87,10 @@ func (c *chaosRuntime) SetDNSChaos(ctx context.Context, req *pb.SetDNSChaosReque
 	if err != nil {
 		return nil, err
 	}
+	staticIPs, err := parseStaticMappings(req)
+	if err != nil {
+		return nil, err
+	}
 
 	targets := make([]chaosTarget, 0, len(req.Pods))
 	seenIPs := make(map[string]chaosTarget, len(req.Pods))
@@ -160,6 +164,7 @@ func (c *chaosRuntime) SetDNSChaos(ctx context.Context, req *pb.SetDNSChaosReque
 			RuleName:       req.Name,
 			Action:         req.Action,
 			Matcher:        matcher,
+			staticIPs:      staticIPs,
 			LastUpdateTime: time.Now(),
 		}
 		if !c.bindPodIPLocked(podInfo, target.ip) {
@@ -226,7 +231,7 @@ func validateSetDNSChaosRequest(req *pb.SetDNSChaosRequest) (*domainMatcher, err
 	if req.Name == "" {
 		return nil, status.Error(codes.InvalidArgument, "chaos rule name must not be empty")
 	}
-	if req.Action != ActionError && req.Action != ActionRandom {
+	if req.Action != ActionError && req.Action != ActionRandom && req.Action != ActionStatic {
 		return nil, status.Errorf(codes.InvalidArgument, "unsupported chaos action %q", req.Action)
 	}
 	if req.Scope != "" {

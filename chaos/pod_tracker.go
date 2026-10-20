@@ -48,6 +48,7 @@ func (c *chaosRuntime) lookupChaosPod(ip string) (*PodInfo, *PodInfo, bool) {
 		RuleName:       podInfo.RuleName,
 		Action:         podInfo.Action,
 		Matcher:        podInfo.Matcher,
+		staticIPs:      podInfo.staticIPs,
 		IP:             podInfo.IP,
 		LastUpdateTime: podInfo.LastUpdateTime,
 	}

@@ -40,14 +40,18 @@ func unusedTCPPort(t *testing.T) int {
 }
 
 func TestCoreDNSReloadPreservesRules(t *testing.T) {
-	testCoreDNSReload(t, true)
+	testCoreDNSReload(t, true, ActionError)
 }
 
 func TestCoreDNSFailedReloadKeepsRPCOwner(t *testing.T) {
-	testCoreDNSReload(t, false)
+	testCoreDNSReload(t, false, ActionError)
 }
 
-func testCoreDNSReload(t *testing.T, successfulReload bool) {
+func TestCoreDNSReloadPreservesStaticRules(t *testing.T) {
+	testCoreDNSReload(t, true, ActionStatic)
+}
+
+func testCoreDNSReload(t *testing.T, successfulReload bool, action string) {
 	t.Helper()
 	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -79,11 +83,16 @@ func testCoreDNSReload(t *testing.T, successfulReload bool) {
 	client := pb.NewDNSClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if _, err := client.SetDNSChaos(ctx, &pb.SetDNSChaosRequest{Name: "reload", Action: ActionError,
-		Pods: []*pb.Pod{{Namespace: "default", Name: "target"}}}); err != nil {
+	if _, err := client.SetDNSChaos(ctx, &pb.SetDNSChaosRequest{Name: "reload", Action: action,
+		IpDomainMaps: []*pb.IpDomainMap{{Domain: "example.org", Ip: "192.0.2.20"}},
+		Pods:         []*pb.Pod{{Namespace: "default", Name: "target"}}}); err != nil {
 		t.Fatal(err)
 	}
-	assertDNS := func(want int) {
+	assertDNS := func(injected bool) {
+		want := dns.RcodeSuccess
+		if injected && action == ActionError {
+			want = dns.RcodeServerFailure
+		}
 		t.Helper()
 		query := new(dns.Msg)
 		query.SetQuestion("example.org.", dns.TypeA)
@@ -94,33 +103,54 @@ func testCoreDNSReload(t *testing.T, successfulReload bool) {
 		if response.Rcode != want {
 			t.Fatalf("DNS response code = %d, want %d", response.Rcode, want)
 		}
+		if action == ActionStatic {
+			wantIP := "127.0.0.1"
+			if injected {
+				wantIP = "192.0.2.20"
+			}
+			records := response.Answer
+			if !injected {
+				if len(response.Answer) != 0 {
+					t.Fatalf("recovered answers = %v, want empty whoami answer", response.Answer)
+				}
+				records = response.Extra
+			}
+			if len(records) == 0 {
+				t.Fatalf("missing address in DNS response %v", response)
+			}
+			answer, ok := records[0].(*dns.A)
+			if !ok || answer.A.String() != wantIP {
+				t.Fatalf("DNS address records = %v, want %s", records, wantIP)
+			}
+		}
 	}
-	assertDNS(dns.RcodeServerFailure)
+	assertDNS(true)
 	if successfulReload {
 		instance, err = instance.Restart(corefile(dnsPort))
 		if err != nil {
 			t.Fatal(err)
 		}
-		assertDNS(dns.RcodeServerFailure)
+		assertDNS(true)
 	}
 	occupied, occupiedPort := reserveTCPPort(t)
 	defer occupied.Close()
 	if _, err := instance.Restart(corefile(occupiedPort)); err == nil {
 		t.Fatal("reload onto occupied DNS port must fail")
 	}
-	assertDNS(dns.RcodeServerFailure)
+	assertDNS(true)
 	if _, err := client.CancelDNSChaos(ctx, &pb.CancelDNSChaosRequest{Name: "reload"}); err != nil {
 		t.Fatal(err)
 	}
-	assertDNS(dns.RcodeSuccess)
+	assertDNS(false)
 	if !successfulReload {
 		return
 	}
 
 	setRule := func() {
 		t.Helper()
-		if _, err := client.SetDNSChaos(ctx, &pb.SetDNSChaosRequest{Name: "reload", Action: ActionError,
-			Pods: []*pb.Pod{{Namespace: "default", Name: "target"}}}); err != nil {
+		if _, err := client.SetDNSChaos(ctx, &pb.SetDNSChaosRequest{Name: "reload", Action: action,
+			IpDomainMaps: []*pb.IpDomainMap{{Domain: "example.org", Ip: "192.0.2.20"}},
+			Pods:         []*pb.Pod{{Namespace: "default", Name: "target"}}}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -142,7 +172,7 @@ func testCoreDNSReload(t *testing.T, successfulReload bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertDNS(dns.RcodeServerFailure)
+	assertDNS(true)
 	assertPortReleased(oldPort)
 	for _, callback := range oldInstance.OnShutdown {
 		if err := callback(); err != nil {
@@ -164,7 +194,7 @@ func testCoreDNSReload(t *testing.T, successfulReload bool) {
 	}
 	assertPortReleased(grpcPort)
 	grpcPort = activePort
-	assertDNS(dns.RcodeServerFailure)
+	assertDNS(true)
 	setRule()
 
 	occupiedRPC, err := net.Listen("tcp", ":0")
@@ -192,7 +222,7 @@ func testCoreDNSReload(t *testing.T, successfulReload bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertDNS(dns.RcodeServerFailure)
+	assertDNS(true)
 	setRule()
 
 	withoutChaos := func(port int) caddy.Input {
@@ -202,28 +232,28 @@ func testCoreDNSReload(t *testing.T, successfulReload bool) {
 		t.Fatal("failed directive removal must retain RPC")
 	}
 	setRule()
-	assertDNS(dns.RcodeServerFailure)
+	assertDNS(true)
 	instance, err = instance.Restart(withoutChaos(dnsPort))
 	if err != nil {
 		t.Fatal(err)
 	}
 	assertPortReleased(grpcPort)
-	assertDNS(dns.RcodeSuccess)
+	assertDNS(false)
 	if next, err := instance.Restart(corefile(occupiedPort)); err == nil {
 		instance = next
 		t.Fatal("re-enabling onto occupied DNS port must fail")
 	}
 	assertPortReleased(grpcPort)
-	assertDNS(dns.RcodeSuccess)
+	assertDNS(false)
 	instance, err = instance.Restart(corefile(dnsPort))
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertDNS(dns.RcodeSuccess)
+	assertDNS(false)
 	setRule()
-	assertDNS(dns.RcodeServerFailure)
+	assertDNS(true)
 	if _, err := client.CancelDNSChaos(ctx, &pb.CancelDNSChaosRequest{Name: "reload"}); err != nil {
 		t.Fatal(err)
 	}
-	assertDNS(dns.RcodeSuccess)
+	assertDNS(false)
 }
