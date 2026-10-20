@@ -5,9 +5,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/coredns/coredns/plugin/kubernetes/object"
+	"github.com/chaos-mesh/k8s_dns_chaos/object"
 	"github.com/coredns/coredns/plugin/pkg/dnstest"
 	"github.com/coredns/coredns/plugin/test"
+	"github.com/coredns/coredns/request"
 
 	"github.com/miekg/dns"
 )
@@ -225,5 +226,38 @@ func TestEndpointsEquivalent(t *testing.T) {
 		if !tc.equiv && endpointsEquivalent(tc.a, tc.b) {
 			t.Errorf("Test %d: expected endpoints to be seen as different but they were not.", i)
 		}
+	}
+}
+
+func TestTransferAuthorization(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		targets []string
+		want    int
+	}{
+		{"matching address", []string{"10.240.0.1:53"}, dns.RcodeSuccess},
+		{"wildcard", []string{"*"}, dns.RcodeSuccess},
+		{"other address", []string{"192.0.2.1:53"}, dns.RcodeRefused},
+		{"empty acl", nil, dns.RcodeRefused},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			k := New([]string{"cluster.local."})
+			k.APIConn = &APIConnServeTest{}
+			k.TransferTo = tc.targets
+			query := new(dns.Msg)
+			query.SetAxfr("cluster.local.")
+			w := dnstest.NewMultiRecorder(&test.ResponseWriter{})
+			state := request.Request{Req: query, W: w, Zone: "cluster.local."}
+			rcode, err := k.Transfer(context.Background(), state)
+			if err != nil || rcode != tc.want {
+				t.Fatalf("Transfer = %d, %v; want %d", rcode, err, tc.want)
+			}
+			if tc.want == dns.RcodeRefused && len(w.Msgs) != 0 {
+				t.Fatal("refused transfer wrote zone data")
+			}
+			if tc.want == dns.RcodeSuccess && (len(w.Msgs) == 0 || len(w.Msgs[0].Answer) == 0) {
+				t.Fatal("allowed transfer returned no zone data")
+			}
+		})
 	}
 }

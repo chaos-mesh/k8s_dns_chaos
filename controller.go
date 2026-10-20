@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/coredns/coredns/plugin/kubernetes/object"
+	"github.com/chaos-mesh/k8s_dns_chaos/object"
 
 	api "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -106,10 +106,10 @@ func newdnsController(ctx context.Context, kubeClient kubernetes.Interface, opts
 	}
 
 	dns.svcLister, dns.svcController = object.NewIndexerInformer(
-		&cache.ListWatch{
+		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc:  serviceListFunc(ctx, dns.client, api.NamespaceAll, dns.selector),
 			WatchFunc: serviceWatchFunc(ctx, dns.client, api.NamespaceAll, dns.selector),
-		},
+		}, dns.client),
 		&api.Service{},
 		cache.ResourceEventHandlerFuncs{AddFunc: dns.Add, UpdateFunc: dns.Update, DeleteFunc: dns.Delete},
 		cache.Indexers{svcNameNamespaceIndex: svcNameNamespaceIndexFunc, svcIPIndex: svcIPIndexFunc},
@@ -118,10 +118,10 @@ func newdnsController(ctx context.Context, kubeClient kubernetes.Interface, opts
 
 	if opts.initPodCache {
 		dns.podLister, dns.podController = object.NewIndexerInformer(
-			&cache.ListWatch{
+			cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 				ListFunc:  podListFunc(ctx, dns.client, api.NamespaceAll, dns.selector),
 				WatchFunc: podWatchFunc(ctx, dns.client, api.NamespaceAll, dns.selector),
-			},
+			}, dns.client),
 			&api.Pod{},
 			cache.ResourceEventHandlerFuncs{AddFunc: dns.Add, UpdateFunc: dns.Update, DeleteFunc: dns.Delete},
 			cache.Indexers{podIPIndex: podIPIndexFunc},
@@ -131,10 +131,10 @@ func newdnsController(ctx context.Context, kubeClient kubernetes.Interface, opts
 
 	if opts.initEndpointsCache {
 		dns.epLister, dns.epController = object.NewIndexerInformer(
-			&cache.ListWatch{
+			cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 				ListFunc:  endpointsListFunc(ctx, dns.client, api.NamespaceAll, dns.selector),
 				WatchFunc: endpointsWatchFunc(ctx, dns.client, api.NamespaceAll, dns.selector),
-			},
+			}, dns.client),
 			&api.Endpoints{},
 			cache.ResourceEventHandlerFuncs{AddFunc: dns.Add, UpdateFunc: dns.Update, DeleteFunc: dns.Delete},
 			cache.Indexers{epNameNamespaceIndex: epNameNamespaceIndexFunc, epIPIndex: epIPIndexFunc},
@@ -143,10 +143,10 @@ func newdnsController(ctx context.Context, kubeClient kubernetes.Interface, opts
 	}
 
 	dns.nsLister, dns.nsController = cache.NewInformer(
-		&cache.ListWatch{
+		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc:  namespaceListFunc(ctx, dns.client, dns.namespaceSelector),
 			WatchFunc: namespaceWatchFunc(ctx, dns.client, dns.namespaceSelector),
-		},
+		}, dns.client),
 		&api.Namespace{},
 		defaultResyncPeriod,
 		cache.ResourceEventHandlerFuncs{})

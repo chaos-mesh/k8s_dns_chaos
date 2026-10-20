@@ -50,7 +50,7 @@ func (p *PodInfo) IsOverdue() bool {
 	return false
 }
 
-func (k Kubernetes) chaosDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg, state request.Request, podInfo *PodInfo) (int, error) {
+func (k *Kubernetes) chaosDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg, state request.Request, podInfo *PodInfo) (int, error) {
 	if podInfo.Action == ActionError {
 		return dns.RcodeServerFailure, fmt.Errorf("dns chaos error")
 	}
@@ -123,7 +123,7 @@ func aaaa(zone string, ttl uint32, ips []net.IP) []dns.RR {
 	return answers
 }
 
-func (k Kubernetes) getChaosPod(ip string) (*PodInfo, error) {
+func (k *Kubernetes) getChaosPod(ip string) (*PodInfo, error) {
 	k.RLock()
 
 	podInfo := k.ipPodMap[ip]
@@ -158,7 +158,7 @@ func (k Kubernetes) getChaosPod(ip string) (*PodInfo, error) {
 }
 
 // needChaos judges weather should do chaos for the request
-func (k Kubernetes) needChaos(podInfo *PodInfo, records []dns.RR, name string) bool {
+func (k *Kubernetes) needChaos(podInfo *PodInfo, records []dns.RR, name string) bool {
 	if podInfo == nil {
 		return false
 	}
@@ -180,7 +180,7 @@ func (k Kubernetes) needChaos(podInfo *PodInfo, records []dns.RR, name string) b
 	return match
 }
 
-func (k Kubernetes) getPodFromCluster(namespace, name string) (*api.Pod, error) {
+func (k *Kubernetes) getPodFromCluster(namespace, name string) (*api.Pod, error) {
 	pods := k.Client.Pods(namespace)
 	if pods == nil {
 		log.Infof("getPodFromCluster, pods is nil")

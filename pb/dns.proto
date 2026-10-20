@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 package pb;
+option go_package = "github.com/chaos-mesh/k8s_dns_chaos/pb";
 
 service DNS {
   rpc SetDNSChaos(SetDNSChaosRequest) returns (DNSChaosResponse) {}

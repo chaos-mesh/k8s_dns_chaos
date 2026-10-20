@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -14,16 +15,16 @@ import (
 	"github.com/coredns/coredns/plugin/pkg/dnsutil"
 	clog "github.com/coredns/coredns/plugin/pkg/log"
 	"github.com/coredns/coredns/plugin/pkg/parse"
+	"github.com/coredns/coredns/plugin/pkg/transport"
 	"github.com/coredns/coredns/plugin/pkg/upstream"
 
-	"github.com/caddyserver/caddy"
+	"github.com/coredns/caddy"
 	"github.com/miekg/dns"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"       // pull this in here, because we want it excluded if plugin.cfg doesn't have k8s
-	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"      // pull this in here, because we want it excluded if plugin.cfg doesn't have k8s
-	_ "k8s.io/client-go/plugin/pkg/client/auth/openstack" // pull this in here, because we want it excluded if plugin.cfg doesn't have k8s
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"  // pull this in here, because we want it excluded if plugin.cfg doesn't have k8s
+	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" // pull this in here, because we want it excluded if plugin.cfg doesn't have k8s
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 const pluginName = "k8s_dns_chaos"
@@ -131,12 +132,12 @@ func ParseStanza(c *caddy.Controller) (*Kubernetes, error) {
 	if len(zones) != 0 {
 		k8s.Zones = zones
 		for i := 0; i < len(k8s.Zones); i++ {
-			k8s.Zones[i] = plugin.Host(k8s.Zones[i]).Normalize()
+			k8s.Zones[i] = normalizeZone(k8s.Zones[i])
 		}
 	} else {
 		k8s.Zones = make([]string, len(c.ServerBlockKeys))
 		for i := 0; i < len(c.ServerBlockKeys); i++ {
-			k8s.Zones[i] = plugin.Host(c.ServerBlockKeys[i]).Normalize()
+			k8s.Zones[i] = normalizeZone(c.ServerBlockKeys[i])
 		}
 	}
 
@@ -244,12 +245,9 @@ func ParseStanza(c *caddy.Controller) (*Kubernetes, error) {
 			}
 			k8s.ttl = uint32(t)
 		case "transfer":
-			tos, froms, err := parse.Transfer(c, false)
+			tos, err := parseTransferTo(c)
 			if err != nil {
 				return nil, err
-			}
-			if len(froms) != 0 {
-				return nil, c.Errf("transfer from is not supported with this plugin")
 			}
 			k8s.TransferTo = tos
 		case "noendpoints":
@@ -335,4 +333,67 @@ func searchFromResolvConf() []string {
 	}
 	plugin.Zones(rc.Search).Normalize()
 	return rc.Search
+}
+
+func parseTransferTo(c *caddy.Controller) ([]string, error) {
+	if !c.NextArg() {
+		return nil, c.ArgErr()
+	}
+	switch c.Val() {
+	case "to":
+		tos := c.RemainingArgs()
+		for i := range tos {
+			if tos[i] != "*" {
+				normalized, err := parse.HostPort(tos[i], transport.Port)
+				if err != nil {
+					return nil, err
+				}
+				tos[i] = normalized
+			}
+		}
+		return tos, nil
+	case "from":
+		return nil, errors.New("can't use `transfer from` when not being a secondary")
+	}
+	return nil, nil
+}
+
+func normalizeZone(zone string) string {
+	_, host := parse.Transport(zone)
+	colon := strings.LastIndex(host, ":")
+	if colon == len(host)-1 {
+		return ""
+	}
+	if colon != -1 {
+		if _, err := strconv.Atoi(host[colon+1:]); err == nil {
+			host = host[:colon]
+		}
+	}
+	if len(host) > 255 {
+		return ""
+	}
+	if _, valid := dns.IsDomainName(host); !valid {
+		return ""
+	}
+	if ip, network, err := net.ParseCIDR(host); err == nil {
+		if reverse, err := dns.ReverseAddr(ip.String()); err == nil {
+			ones, bits := network.Mask.Size()
+			digitBits := 8
+			if len(network.IP) == net.IPv6len {
+				digitBits = 4
+			}
+			// Retain the legacy reverse-zone boundary instead of selecting one exact subnet.
+			nearest := bits - ones + (bits-ones)%digitBits
+			offset := 0
+			for i := 0; i < nearest/digitBits; i++ {
+				var end bool
+				offset, end = dns.NextLabel(reverse, offset)
+				if end {
+					break
+				}
+			}
+			host = reverse[offset:]
+		}
+	}
+	return plugin.Name(host).Normalize()
 }

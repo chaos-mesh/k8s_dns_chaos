@@ -8,15 +8,27 @@ on:
 
 jobs:
   e2e:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7.0.0
         with:
-          go-version: '1.25'
+          go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            e2e/go.sum
+
+      - name: Run Go checks
+        run: |
+          go test -race -count=1 ./...
+          go vet ./...
+          go mod tidy -diff
+          go -C e2e test -run '^$' ./...
+          go -C e2e vet ./...
+          go -C e2e mod tidy -diff
 
       - name: Install minikube
         run: |

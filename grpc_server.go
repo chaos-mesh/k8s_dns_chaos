@@ -13,7 +13,7 @@ import (
 )
 
 // CreateGRPCServer ...
-func (k Kubernetes) CreateGRPCServer() error {
+func (k *Kubernetes) CreateGRPCServer() error {
 	if k.grpcPort == 0 {
 		// use default port
 		k.grpcPort = 9288
@@ -39,7 +39,7 @@ func (k Kubernetes) CreateGRPCServer() error {
 }
 
 // SetDNSChaos ...
-func (k Kubernetes) SetDNSChaos(ctx context.Context, req *pb.SetDNSChaosRequest) (*pb.DNSChaosResponse, error) {
+func (k *Kubernetes) SetDNSChaos(ctx context.Context, req *pb.SetDNSChaosRequest) (*pb.DNSChaosResponse, error) {
 	log.Infof("receive SetDNSChaos request %v", req)
 
 	k.Lock()
@@ -108,7 +108,7 @@ func (k Kubernetes) SetDNSChaos(ctx context.Context, req *pb.SetDNSChaosRequest)
 }
 
 // CancelDNSChaos ...
-func (k Kubernetes) CancelDNSChaos(ctx context.Context, req *pb.CancelDNSChaosRequest) (*pb.DNSChaosResponse, error) {
+func (k *Kubernetes) CancelDNSChaos(ctx context.Context, req *pb.CancelDNSChaosRequest) (*pb.DNSChaosResponse, error) {
 	log.Infof("receive CancelDNSChaos request %v", req)
 	k.Lock()
 	defer k.Unlock()

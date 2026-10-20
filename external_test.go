@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/chaos-mesh/k8s_dns_chaos/object"
 	"github.com/coredns/coredns/plugin/etcd/msg"
-	"github.com/coredns/coredns/plugin/kubernetes/object"
 	"github.com/coredns/coredns/plugin/test"
 	"github.com/coredns/coredns/request"
 

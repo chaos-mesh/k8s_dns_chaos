@@ -1,19 +1,20 @@
-# syntax=docker/dockerfile:experimental
+# syntax=docker/dockerfile:1
 
-FROM golang:1.25 AS build-env
+FROM golang:1.27.2 AS build-env
+ARG TARGETARCH
 WORKDIR /
-RUN git clone https://github.com/coredns/coredns && cd coredns && git checkout 7d5f5b87a4fb310d442f7ef0d52e3fead0e10d39
+RUN git clone --depth 1 --branch v1.14.7 https://github.com/coredns/coredns
 COPY . /k8s_dns_chaos
-# RUN ln -s /k8s_dns_chaos /coredns/plugin/k8s_dns_chaos
 RUN sed -i '/kubernetes/a\k8s_dns_chaos:github.com/chaos-mesh/k8s_dns_chaos' /coredns/plugin.cfg
-RUN cd coredns && \
+RUN --mount=type=cache,id=chaos-dns-go-mod,target=/go/pkg/mod \
+    --mount=type=cache,id=chaos-dns-go-build-${TARGETARCH},target=/root/.cache/go-build \
+    cd coredns && \
     go mod edit -require github.com/chaos-mesh/k8s_dns_chaos@v0.0.0-00000000000000-000000000000 && \
-    go mod edit -replace github.com/chaos-mesh/k8s_dns_chaos=/k8s_dns_chaos && \ 
-    go mod edit -replace google.golang.org/grpc=google.golang.org/grpc@v1.29.1 && \
+    go mod edit -replace github.com/chaos-mesh/k8s_dns_chaos=/k8s_dns_chaos && \
     go get github.com/chaos-mesh/k8s_dns_chaos && \
     go generate && \
-    go mod tidy
-RUN cd coredns && make
+    go mod tidy && \
+    make
 
 FROM debian:stable-slim AS certs
 RUN apt-get update && apt-get -uy upgrade
