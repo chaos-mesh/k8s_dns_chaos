@@ -1,47 +1,47 @@
 package kubernetes
 
 import (
+	"reflect"
 	"testing"
 
-	"github.com/caddyserver/caddy"
+	"github.com/coredns/caddy"
 )
 
 func TestKubernetesParseTransfer(t *testing.T) {
 	tests := []struct {
-		input     string // Corefile data as string
-		expected  string
+		name      string
+		directive string
+		expected  []string
 		shouldErr bool
 	}{
-		{`kubernetes cluster.local {
-			transfer to 1.2.3.4
-		}`, "1.2.3.4:53", false},
-		{`kubernetes cluster.local {
-			transfer to 1.2.3.4:53
-		}`, "1.2.3.4:53", false},
-		{`kubernetes cluster.local {
-			transfer to *
-		}`, "*", false},
-		{`kubernetes cluster.local {
-			transfer
-		}`, "", true},
+		{"default port", "transfer to 1.2.3.4", []string{"1.2.3.4:53"}, false},
+		{"explicit port", "transfer to 1.2.3.4:5353", []string{"1.2.3.4:5353"}, false},
+		{"ipv6", "transfer to 2001:db8::1 [2001:db8::2]:5353", []string{"[2001:db8::1]:53", "[2001:db8::2]:5353"}, false},
+		{"mixed targets", "transfer to * 1.2.3.4", []string{"*", "1.2.3.4:53"}, false},
+		{"wildcard", "transfer to *", []string{"*"}, false},
+		{"empty targets", "transfer to", nil, false},
+		{"unknown direction", "transfer unknown", nil, false},
+		{"missing direction", "transfer", nil, true},
+		{"inbound", "transfer from 1.2.3.4", nil, true},
+		{"invalid address", "transfer to example.com", nil, true},
 	}
 
-	for i, tc := range tests {
-		c := caddy.NewTestController("dns", tc.input)
-		k, err := kubernetesParse(c)
-		if err != nil && !tc.shouldErr {
-			t.Fatalf("Test %d: Expected no error, got %q", i, err)
-		}
-		if err == nil && tc.shouldErr {
-			t.Fatalf("Test %d: Expected error, got none", i)
-		}
-		if err != nil && tc.shouldErr {
-			// input should error
-			continue
-		}
-
-		if k.TransferTo[0] != tc.expected {
-			t.Errorf("Test %d: Expected Transfer To to be %s, got %s", i, tc.expected, k.TransferTo[0])
-		}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			c := caddy.NewTestController("dns", "k8s_dns_chaos cluster.local {\n"+tc.directive+"\n}")
+			k, err := kubernetesParse(c)
+			if tc.shouldErr {
+				if err == nil {
+					t.Fatal("expected a configuration error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(k.TransferTo, tc.expected) {
+				t.Fatalf("transfer destinations = %v, want %v", k.TransferTo, tc.expected)
+			}
+		})
 	}
 }

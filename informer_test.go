@@ -1,9 +1,10 @@
 package kubernetes
 
 import (
+	"reflect"
 	"testing"
 
-	"github.com/coredns/coredns/plugin/kubernetes/object"
+	"github.com/chaos-mesh/k8s_dns_chaos/object"
 
 	api "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,7 +33,7 @@ func testProcessor(t *testing.T, processor cache.ProcessFunc, idx cache.Indexer)
 	err := processor(cache.Deltas{
 		{Type: cache.Added, Object: obj},
 		{Type: cache.Added, Object: obj2},
-	})
+	}, false)
 	if err != nil {
 		t.Fatalf("add failed: %v", err)
 	}
@@ -56,7 +57,7 @@ func testProcessor(t *testing.T, processor cache.ProcessFunc, idx cache.Indexer)
 	err = processor(cache.Deltas{{
 		Type:   cache.Updated,
 		Object: obj,
-	}})
+	}}, false)
 	if err != nil {
 		t.Fatalf("update failed: %v", err)
 	}
@@ -79,7 +80,7 @@ func testProcessor(t *testing.T, processor cache.ProcessFunc, idx cache.Indexer)
 	err = processor(cache.Deltas{{
 		Type:   cache.Deleted,
 		Object: obj2,
-	}})
+	}}, false)
 	if err != nil {
 		t.Fatalf("delete test failed: %v", err)
 	}
@@ -97,7 +98,7 @@ func testProcessor(t *testing.T, processor cache.ProcessFunc, idx cache.Indexer)
 	err = processor(cache.Deltas{{
 		Type:   cache.Deleted,
 		Object: tombstone,
-	}})
+	}}, false)
 	if err != nil {
 		t.Fatalf("tombstone delete test failed: %v", err)
 	}
@@ -107,5 +108,38 @@ func testProcessor(t *testing.T, processor cache.ProcessFunc, idx cache.Indexer)
 	}
 	if exists {
 		t.Fatal("tombstone deleted object found in index")
+	}
+}
+
+func TestDefaultProcessorInitialList(t *testing.T) {
+	type addedService struct {
+		name    string
+		initial bool
+	}
+	var added []addedService
+	handler := cache.ResourceEventHandlerDetailedFuncs{
+		AddFunc: func(obj interface{}, initial bool) {
+			svc := obj.(*object.Service)
+			added = append(added, addedService{svc.Name, initial})
+		},
+	}
+	idx := cache.NewIndexer(cache.DeletionHandlingMetaNamespaceKeyFunc, cache.Indexers{})
+	processor := object.DefaultProcessor(object.ToService(true), nil)(idx, handler)
+	for _, tc := range []struct {
+		name    string
+		delta   cache.DeltaType
+		initial bool
+	}{
+		{"listed", cache.Sync, true},
+		{"watched", cache.Added, false},
+	} {
+		svc := &api.Service{ObjectMeta: metav1.ObjectMeta{Name: tc.name, Namespace: "test"}}
+		if err := processor(cache.Deltas{{Type: tc.delta, Object: svc}}, tc.initial); err != nil {
+			t.Fatalf("process %s: %v", tc.name, err)
+		}
+	}
+	want := []addedService{{"listed", true}, {"watched", false}}
+	if !reflect.DeepEqual(added, want) {
+		t.Fatalf("add events = %#v, want %#v", added, want)
 	}
 }

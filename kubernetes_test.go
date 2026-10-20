@@ -5,8 +5,9 @@ import (
 	"net"
 	"testing"
 
+	"github.com/chaos-mesh/k8s_dns_chaos/object"
 	"github.com/coredns/coredns/plugin"
-	"github.com/coredns/coredns/plugin/kubernetes/object"
+	dnstest "github.com/coredns/coredns/plugin/test"
 	"github.com/coredns/coredns/request"
 
 	"github.com/miekg/dns"
@@ -279,6 +280,7 @@ func TestServices(t *testing.T) {
 
 	for i, test := range tests {
 		state := request.Request{
+			W:    &dnstest.ResponseWriter{},
 			Req:  &dns.Msg{Question: []dns.Question{{Name: test.qname, Qtype: test.qtype}}},
 			Zone: "interwebs.test.", // must match from k.Zones[0]
 		}
@@ -334,6 +336,7 @@ func TestServicesAuthority(t *testing.T) {
 		k.localIPs = test.localIPs
 
 		state := request.Request{
+			W:    &dnstest.ResponseWriter{},
 			Req:  &dns.Msg{Question: []dns.Question{{Name: test.qname, Qtype: test.qtype}}},
 			Zone: k.Zones[0],
 		}

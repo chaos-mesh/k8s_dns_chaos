@@ -47,6 +47,6 @@ sleep 3
 
 echo "==> Running E2E tests..."
 cd "${SCRIPT_DIR}"
-go test -v -timeout 10m ./...
+go test -v -count=1 -timeout 10m ./...
 
 echo "==> E2E tests passed!"

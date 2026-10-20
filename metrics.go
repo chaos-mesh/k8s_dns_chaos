@@ -3,8 +3,8 @@ package kubernetes
 import (
 	"time"
 
+	"github.com/chaos-mesh/k8s_dns_chaos/object"
 	"github.com/coredns/coredns/plugin"
-	"github.com/coredns/coredns/plugin/kubernetes/object"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"

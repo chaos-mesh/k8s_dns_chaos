@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/coredns/coredns/plugin/kubernetes/object"
+	"github.com/chaos-mesh/k8s_dns_chaos/object"
 	"github.com/coredns/coredns/plugin/pkg/dnstest"
 	"github.com/coredns/coredns/plugin/test"
 

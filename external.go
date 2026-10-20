@@ -3,8 +3,8 @@ package kubernetes
 import (
 	"strings"
 
+	"github.com/chaos-mesh/k8s_dns_chaos/object"
 	"github.com/coredns/coredns/plugin/etcd/msg"
-	"github.com/coredns/coredns/plugin/kubernetes/object"
 	"github.com/coredns/coredns/plugin/pkg/dnsutil"
 	"github.com/coredns/coredns/request"
 
@@ -14,7 +14,7 @@ import (
 // External implements the ExternalFunc call from the external plugin.
 // It returns any services matching in the services' ExternalIPs.
 func (k *Kubernetes) External(state request.Request) ([]msg.Service, int) {
-	log.Info("External, sourceIP: %s", state.IP())
+	log.Infof("External, sourceIP: %s", state.IP())
 	base, _ := dnsutil.TrimZone(state.Name(), state.Zone)
 
 	segs := dns.SplitDomainName(base)

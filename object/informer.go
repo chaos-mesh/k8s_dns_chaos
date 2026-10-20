@@ -15,7 +15,6 @@ func NewIndexerInformer(lw cache.ListerWatcher, objType runtime.Object, h cache.
 		ListerWatcher:    lw,
 		ObjectType:       objType,
 		FullResyncPeriod: defaultResyncPeriod,
-		RetryOnError:     false,
 		Process:          builder(clientState, h),
 	}
 	return clientState, cache.New(cfg)
@@ -26,7 +25,7 @@ type recordLatencyFunc func(meta.Object)
 // DefaultProcessor is based on the Process function from cache.NewIndexerInformer except it does a conversion.
 func DefaultProcessor(convert ToFunc, recordLatency recordLatencyFunc) ProcessorBuilder {
 	return func(clientState cache.Indexer, h cache.ResourceEventHandler) cache.ProcessFunc {
-		return func(obj interface{}) error {
+		return func(obj interface{}, isInInitialList bool) error {
 			for _, d := range obj.(cache.Deltas) {
 				switch d.Type {
 				case cache.Sync, cache.Added, cache.Updated:
@@ -43,7 +42,7 @@ func DefaultProcessor(convert ToFunc, recordLatency recordLatencyFunc) Processor
 						if err := clientState.Add(obj); err != nil {
 							return err
 						}
-						h.OnAdd(obj)
+						h.OnAdd(obj, isInInitialList)
 					}
 					if recordLatency != nil {
 						recordLatency(d.Object.(meta.Object))

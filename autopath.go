@@ -1,8 +1,8 @@
 package kubernetes
 
 import (
+	"github.com/chaos-mesh/k8s_dns_chaos/object"
 	"github.com/coredns/coredns/plugin"
-	"github.com/coredns/coredns/plugin/kubernetes/object"
 	"github.com/coredns/coredns/request"
 )
 
