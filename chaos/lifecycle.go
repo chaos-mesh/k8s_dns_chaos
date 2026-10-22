@@ -2,6 +2,7 @@ package chaos
 
 import (
 	"fmt"
+	"slices"
 	"sync"
 
 	"github.com/coredns/caddy"
@@ -129,15 +130,13 @@ func (l *grpcLifecycleState) retire(g *grpcGeneration) error {
 const lifecycleHookName = "dns_chaos_lifecycle"
 
 func (l *grpcLifecycleState) ensureHook() {
-	for _, name := range caddy.ListPlugins()["event_hooks"] {
-		if name == lifecycleHookName {
-			return
-		}
+	if slices.Contains(caddy.ListPlugins()["event_hooks"], lifecycleHookName) {
+		return
 	}
 	caddy.RegisterEventHook(lifecycleHookName, l.instanceStarted)
 }
 
-func (l *grpcLifecycleState) instanceStarted(event caddy.EventName, info interface{}) error {
+func (l *grpcLifecycleState) instanceStarted(event caddy.EventName, info any) error {
 	if event != caddy.InstanceStartupEvent {
 		return nil
 	}

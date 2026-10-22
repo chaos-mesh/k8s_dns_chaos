@@ -29,8 +29,8 @@ func TestRefreshPodIPOnce(t *testing.T) {
 	)
 
 	client := fake.NewSimpleClientset(&api.Pod{
-		ObjectMeta: meta.ObjectMeta{Namespace: namespace, Name: name},
-		Status:     api.PodStatus{PodIP: podIP},
+		Namespace: namespace, Name: name,
+		Status: api.PodStatus{PodIP: podIP},
 	})
 	var getCalls atomic.Int32
 	client.PrependReactor("get", "pods", func(k8stesting.Action) (bool, runtime.Object, error) {
@@ -51,11 +51,9 @@ func TestRefreshPodIPOnce(t *testing.T) {
 
 	var waitGroup sync.WaitGroup
 	for range 10 {
-		waitGroup.Add(1)
-		go func() {
-			defer waitGroup.Done()
+		waitGroup.Go(func() {
 			chaos.refreshPodIP(context.Background(), podInfo)
-		}()
+		})
 	}
 	waitGroup.Wait()
 
@@ -99,7 +97,7 @@ func TestGetChaosPodKeepsPodWithoutIPForRecovery(t *testing.T) {
 
 	chaos := New()
 	chaos.Client = fake.NewSimpleClientset(&api.Pod{
-		ObjectMeta: meta.ObjectMeta{Namespace: namespace, Name: name},
+		Namespace: namespace, Name: name,
 	}).CoreV1()
 	podInfo := &PodInfo{
 		Namespace:      namespace,
@@ -143,8 +141,8 @@ func TestGetChaosPodRecoversRecreatedPod(t *testing.T) {
 		t.Fatal("deleted pod must be unbound before recovery")
 	}
 	_, err := client.CoreV1().Pods(namespace).Create(ctx, &api.Pod{
-		ObjectMeta: meta.ObjectMeta{Namespace: namespace, Name: name},
-		Status:     api.PodStatus{PodIP: newIP},
+		Namespace: namespace, Name: name,
+		Status: api.PodStatus{PodIP: newIP},
 	}, meta.CreateOptions{})
 	if err != nil {
 		t.Fatalf("create recreated pod: %v", err)
@@ -173,8 +171,8 @@ func TestGetChaosPodFindsChangedIPAfterIndexMiss(t *testing.T) {
 
 	chaos := New()
 	chaos.Client = fake.NewSimpleClientset(&api.Pod{
-		ObjectMeta: meta.ObjectMeta{Namespace: namespace, Name: name},
-		Status:     api.PodStatus{PodIP: newIP},
+		Namespace: namespace, Name: name,
+		Status: api.PodStatus{PodIP: newIP},
 	}).CoreV1()
 	podInfo := &PodInfo{
 		Namespace:      namespace,
@@ -205,8 +203,8 @@ func TestGetChaosPodRejectsRecycledOldIPAfterRefresh(t *testing.T) {
 
 	chaos := New()
 	chaos.Client = fake.NewSimpleClientset(&api.Pod{
-		ObjectMeta: meta.ObjectMeta{Namespace: namespace, Name: name},
-		Status:     api.PodStatus{PodIP: newIP},
+		Namespace: namespace, Name: name,
+		Status: api.PodStatus{PodIP: newIP},
 	}).CoreV1()
 	podInfo := &PodInfo{
 		Namespace:      namespace,
@@ -230,8 +228,8 @@ func TestRefreshPodIPDoesNotOverwriteExistingMapping(t *testing.T) {
 
 	chaos := New()
 	chaos.Client = fake.NewSimpleClientset(&api.Pod{
-		ObjectMeta: meta.ObjectMeta{Namespace: namespace, Name: "first"},
-		Status:     api.PodStatus{PodIP: "10.0.0.2"},
+		Namespace: namespace, Name: "first",
+		Status: api.PodStatus{PodIP: "10.0.0.2"},
 	}).CoreV1()
 	first := &PodInfo{
 		Namespace:      namespace,

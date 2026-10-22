@@ -19,7 +19,6 @@ import (
 	"github.com/coredns/coredns/plugin/test"
 	"github.com/miekg/dns"
 	api "k8s.io/api/core/v1"
-	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 )
 
@@ -180,8 +179,8 @@ current-context: test
 	}
 	fault := config.Handler("dns_chaos").(*chaos.DNSChaos)
 	fault.Client = fake.NewSimpleClientset(
-		&api.Pod{ObjectMeta: meta.ObjectMeta{Namespace: "default", Name: "first"}, Status: api.PodStatus{PodIP: "10.0.0.1"}},
-		&api.Pod{ObjectMeta: meta.ObjectMeta{Namespace: "default", Name: "second"}, Status: api.PodStatus{PodIP: "10.0.0.2"}},
+		&api.Pod{Namespace: "default", Name: "first", Status: api.PodStatus{PodIP: "10.0.0.1"}},
+		&api.Pod{Namespace: "default", Name: "second", Status: api.PodStatus{PodIP: "10.0.0.2"}},
 	).CoreV1()
 	return server, fault, calls
 }

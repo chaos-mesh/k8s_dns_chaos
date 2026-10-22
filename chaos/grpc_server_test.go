@@ -15,7 +15,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	api "k8s.io/api/core/v1"
-	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
 	k8stesting "k8s.io/client-go/testing"
@@ -283,8 +282,8 @@ func TestSetDNSChaosRejectsUnsupportedScopeAndSelector(t *testing.T) {
 
 func testPod(name, ip string) *api.Pod {
 	return &api.Pod{
-		ObjectMeta: meta.ObjectMeta{Namespace: "default", Name: name},
-		Status:     api.PodStatus{PodIP: ip},
+		Namespace: "default", Name: name,
+		Status: api.PodStatus{PodIP: ip},
 	}
 }
 

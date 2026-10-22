@@ -28,7 +28,7 @@ func parseStaticMappings(req *pb.SetDNSChaosRequest) (map[string]netip.Addr, err
 		if errs := validation.IsDNS1123Subdomain(domain); len(errs) != 0 {
 			return nil, status.Errorf(codes.InvalidArgument, "invalid static domain %q: %s", mapping.Domain, strings.Join(errs, "; "))
 		}
-		for _, label := range strings.Split(domain, ".") {
+		for label := range strings.SplitSeq(domain, ".") {
 			if len(label) > 63 {
 				return nil, status.Errorf(codes.InvalidArgument, "static domain %q contains a label longer than 63 characters", mapping.Domain)
 			}

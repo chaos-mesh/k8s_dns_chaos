@@ -151,7 +151,7 @@ func (c *DNSChaos) applyChaos(ctx context.Context, w dns.ResponseWriter, r *dns.
 
 func getRandomIPv4() net.IP {
 	nums := make([]byte, 4)
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		nums[i] = byte(rand.Intn(256))
 	}
 	return net.IPv4(nums[0], nums[1], nums[2], nums[3])
@@ -159,7 +159,7 @@ func getRandomIPv4() net.IP {
 
 func getRandomIPv6() net.IP {
 	ip := make([]byte, 16)
-	for i := 0; i < 16; i++ {
+	for i := range 16 {
 		ip[i] = byte(rand.Intn(256))
 	}
 	return net.IP(ip)

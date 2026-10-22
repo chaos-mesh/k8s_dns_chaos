@@ -280,7 +280,7 @@ func checkControllerLifecycle(t *testing.T, f controllerFixture, action string) 
 				continue
 			}
 			var nameservers []string
-			for _, line := range strings.Split(resolver, "\n") {
+			for line := range strings.SplitSeq(resolver, "\n") {
 				fields := strings.Fields(line)
 				if len(fields) == 2 && fields[0] == "nameserver" {
 					nameservers = append(nameservers, fields[1])
